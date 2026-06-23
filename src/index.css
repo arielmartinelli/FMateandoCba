@@ -5,17 +5,17 @@
   --bg-primary: #110e0d;      /* Terracota oscuro profundo */
   --bg-secondary: #1a1513;    /* Tono madera/barro de fondo */
   --bg-tertiary: #271f1b;     /* Detalles y cards */
-  --accent-gold: #8a4530;     /* Marrón terracota del logo */
-  --accent-gold-hover: #a1553d;
+  --accent-gold: #bd7358;     /* Marrón más claro y brillante */
+  --accent-gold-hover: #cf866b;
   --accent-green: #3d6f4c;    /* Verde Yerba Mate */
   --accent-green-hover: #2f5a3a;
   --accent-red: #cc5a5a;
-  --text-primary: #f2eae4;    /* Crema/Ivory del logo */
-  --text-secondary: #cab4ab;  /* Cuero mate/arcilla suave */
-  --text-muted: #88746c;
-  --border-color: #382924;
+  --text-primary: #ffffff;    /* Letra blanca */
+  --text-secondary: #f2eae4;  /* Letra secundaria crema claro (casi blanca) */
+  --text-muted: #b39f96;      /* Letra apagada más legible */
+  --border-color: #40302b;    /* Bordes un poco más claros */
   --glass-bg: rgba(26, 21, 19, 0.88);
-  --glass-border: rgba(138, 69, 48, 0.2);
+  --glass-border: rgba(189, 115, 88, 0.2);
   --font-title: 'Playfair Display', Georgia, serif;
   --font-heading: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
