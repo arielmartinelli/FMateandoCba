@@ -2,9 +2,9 @@
 
 /* variables del sistema de diseño premium */
 :root {
-  --bg-primary: #110e0d;      /* Terracota oscuro profundo */
-  --bg-secondary: #1a1513;    /* Tono madera/barro de fondo */
-  --bg-tertiary: #271f1b;     /* Detalles y cards */
+  --bg-primary: #231815;      /* Marrón de fondo más claro y cálido */
+  --bg-secondary: #2d201c;    /* Tono de fondo secundario */
+  --bg-tertiary: #3c2c27;     /* Marrón de tarjetas más claro */
   --accent-gold: #bd7358;     /* Marrón más claro y brillante */
   --accent-gold-hover: #cf866b;
   --accent-green: #3d6f4c;    /* Verde Yerba Mate */
@@ -12,9 +12,9 @@
   --accent-red: #cc5a5a;
   --text-primary: #ffffff;    /* Letra blanca */
   --text-secondary: #f2eae4;  /* Letra secundaria crema claro (casi blanca) */
-  --text-muted: #b39f96;      /* Letra apagada más legible */
-  --border-color: #40302b;    /* Bordes un poco más claros */
-  --glass-bg: rgba(26, 21, 19, 0.88);
+  --text-muted: #c4b3ac;      /* Letra apagada más legible sobre fondos más claros */
+  --border-color: #4c3933;    /* Bordes correspondientes */
+  --glass-bg: rgba(45, 32, 28, 0.88);
   --glass-border: rgba(189, 115, 88, 0.2);
   --font-title: 'Playfair Display', Georgia, serif;
   --font-heading: 'Outfit', sans-serif;
