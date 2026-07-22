@@ -19,7 +19,7 @@ export default function App() {
     e.preventDefault();
     if (!contactName.trim() || !contactMessage.trim()) return;
 
-    const rawPhone = import.meta.env.VITE_WHATSAPP_NUMBER || '5493512026507';
+    const rawPhone = import.meta.env.VITE_WHATSAPP_NUMBER || '5493518013657';
     const whatsappPhone = rawPhone.replace(/\s+/g, '').replace(/-/g, '').replace(/\+/g, '');
 
     const message = `Hola! Mi nombre es *${contactName.trim()}*.\nTengo la siguiente consulta sobre sus mates:\n\n💬 "${contactMessage.trim()}"`;
@@ -247,7 +247,7 @@ export default function App() {
                 </div>
                 <h1>El verdadero ritual de un buen cebador</h1>
                 <p>
-                  En <strong>F Mateando CBA</strong> seleccionamos los mejores mates de calabaza y madera noble de algarrobo. Disfruta de la mejor calidad artesanal con costuras reforzadas y virolas trabajadas a mano. Hacemos envíos rápidos y seguros.
+                  En <strong>FMateando CBA</strong>, desde Córdoba Capital, te acercamos mates de algarrobo, calabaza y mucho más. Elegimos productos de calidad para que disfrutes del verdadero ritual del mate, con envíos a todo el país.
                 </p>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <a href="#catalogo" className="btn btn-primary">
@@ -311,9 +311,9 @@ export default function App() {
                     </div>
                     <div>
                       <h4 style={{ fontFamily: 'var(--font-heading)', margin: 0, fontWeight: 600 }}>WhatsApp</h4>
-                      <p style={{ margin: '0.1rem 0 0.3rem 0', color: 'var(--text-secondary)' }}>+54 9 351 202-6507</p>
+                      <p style={{ margin: '0.1rem 0 0.3rem 0', color: 'var(--text-secondary)' }}>+54 9 351 801-3657</p>
                       <a
-                        href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER || '5493512026507'}`}
+                        href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER || '5493518013657'}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="contact-link"
@@ -486,7 +486,7 @@ export default function App() {
               </svg>
             </a>
             <a
-              href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER || '5493512026507'}`}
+              href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER || '5493518013657'}`}
               target="_blank"
               rel="noopener noreferrer"
               className="social-link"

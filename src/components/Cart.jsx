@@ -11,7 +11,7 @@ export default function Cart({ isOpen, onClose, cartItems, onUpdateQty, onRemove
   const totalAmount = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   
   // Limpiar el número de teléfono para WhatsApp
-  const rawPhone = import.meta.env.VITE_WHATSAPP_NUMBER || '5493512026507';
+  const rawPhone = import.meta.env.VITE_WHATSAPP_NUMBER || '5493518013657';
   const whatsappPhone = rawPhone.replace(/\s+/g, '').replace(/-/g, '').replace(/\+/g, '');
 
   const handleSubmitOrder = (e) => {

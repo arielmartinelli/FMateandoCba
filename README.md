@@ -24,7 +24,7 @@ Catálogo digital y gestor de pedidos para **F Mateando CBA**, un emprendimiento
 Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 
 ```env
-VITE_WHATSAPP_NUMBER=5493512026507
+VITE_WHATSAPP_NUMBER=5493518013657
 VITE_ADMIN_PASSWORD=montañita
 VITE_SUPABASE_URL=tu_supabase_url
 VITE_SUPABASE_ANON_KEY=tu_supabase_anon_key
