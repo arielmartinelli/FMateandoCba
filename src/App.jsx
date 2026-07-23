@@ -108,17 +108,19 @@ export default function App() {
 
   const handleUpdateProduct = async (id, updates) => {
     const updatedProduct = await productService.updateProduct(id, updates);
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? updatedProduct : p))
-    );
+    if (updatedProduct) {
+      setProducts((prev) =>
+        prev.map((p) => (String(p.id) === String(id) ? { ...p, ...updatedProduct } : p))
+      );
+    }
   };
 
   const handleDeleteProduct = async (id) => {
     const success = await productService.deleteProduct(id);
     if (success) {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setProducts((prev) => prev.filter((p) => String(p.id) !== String(id)));
       // También remover del carrito si el producto fue eliminado
-      setCart((prev) => prev.filter((item) => item.id !== id));
+      setCart((prev) => prev.filter((item) => String(item.id) !== String(id)));
     }
   };
 

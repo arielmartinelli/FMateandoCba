@@ -201,7 +201,17 @@ const getLocalProducts = () => {
     localStorage.setItem('fmateando_products', JSON.stringify(INITIAL_PRODUCTS));
     return INITIAL_PRODUCTS;
   }
-  return JSON.parse(local);
+  try {
+    const parsed = JSON.parse(local);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem('fmateando_products', JSON.stringify(INITIAL_PRODUCTS));
+      return INITIAL_PRODUCTS;
+    }
+    return parsed;
+  } catch (e) {
+    localStorage.setItem('fmateando_products', JSON.stringify(INITIAL_PRODUCTS));
+    return INITIAL_PRODUCTS;
+  }
 };
 
 const saveLocalProducts = (products) => {
@@ -253,7 +263,8 @@ export const productService = {
           .select();
         
         if (error) throw error;
-        return data[0];
+        if (data && data.length > 0) return data[0];
+        throw new Error('No data returned from Supabase insert');
       } catch (err) {
         console.error('Error agregando a Supabase, usando LocalStorage:', err);
         const local = getLocalProducts();
@@ -273,6 +284,12 @@ export const productService = {
 
   // Modificar precio y/o foto de un producto
   async updateProduct(id, updates) {
+    // Siempre actualizar LocalStorage para garantizar sincronización persistente local
+    const local = getLocalProducts();
+    const updatedLocal = local.map(p => String(p.id) === String(id) ? { ...p, ...updates } : p);
+    saveLocalProducts(updatedLocal);
+    const localResult = updatedLocal.find(p => String(p.id) === String(id)) || { id, ...updates };
+
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase
@@ -282,24 +299,25 @@ export const productService = {
           .select();
         
         if (error) throw error;
-        return data[0];
+        if (data && data.length > 0) {
+          return data[0];
+        }
+        return localResult;
       } catch (err) {
         console.error('Error actualizando en Supabase, usando LocalStorage:', err);
-        const local = getLocalProducts();
-        const updated = local.map(p => p.id === id ? { ...p, ...updates } : p);
-        saveLocalProducts(updated);
-        return updated.find(p => p.id === id);
+        return localResult;
       }
     } else {
-      const local = getLocalProducts();
-      const updated = local.map(p => p.id === id ? { ...p, ...updates } : p);
-      saveLocalProducts(updated);
-      return updated.find(p => p.id === id);
+      return localResult;
     }
   },
 
   // Eliminar un producto
   async deleteProduct(id) {
+    const local = getLocalProducts();
+    const filtered = local.filter(p => String(p.id) !== String(id));
+    saveLocalProducts(filtered);
+
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase
@@ -311,15 +329,9 @@ export const productService = {
         return true;
       } catch (err) {
         console.error('Error eliminando de Supabase, usando LocalStorage:', err);
-        const local = getLocalProducts();
-        const filtered = local.filter(p => p.id !== id);
-        saveLocalProducts(filtered);
         return true;
       }
     } else {
-      const local = getLocalProducts();
-      const filtered = local.filter(p => p.id !== id);
-      saveLocalProducts(filtered);
       return true;
     }
   }

@@ -61,34 +61,44 @@ export default function AdminPanel({ products, onAddProduct, onUpdateProduct, on
     }
   };
 
-  // Configurar las subcategorías por defecto cuando cambia la categoría
-  useEffect(() => {
-    if (category === 'mates') {
+  // Manejar cambio manual de categoría desde el selector
+  const handleCategorySelectChange = (e) => {
+    const newCategory = e.target.value;
+    setCategory(newCategory);
+    if (newCategory === 'mates') {
       setSubcategory('imperial');
       setSubSubgroup('calabaza');
-    } else if (category === 'bombillas') {
-      setSubcategory('todas');
+    } else if (newCategory === 'bombillas') {
+      setSubcategory('acero');
       setSubSubgroup('');
-    } else if (category === 'accesorios') {
+    } else if (newCategory === 'accesorios') {
       setSubcategory('todos');
       setSubSubgroup('');
     }
-  }, [category]);
+  };
 
-  // Configurar sub-subgrupos por defecto cuando cambia la subcategoría de mates
-  useEffect(() => {
+  // Manejar cambio manual de subcategoría desde el selector
+  const handleSubcategorySelectChange = (e) => {
+    const newSubcategory = e.target.value;
+    setSubcategory(newSubcategory);
     if (category === 'mates') {
-      if (subcategory === 'imperial') {
+      if (newSubcategory === 'imperial') {
         setSubSubgroup('calabaza');
-      } else if (subcategory === 'torpedo') {
+      } else if (newSubcategory === 'torpedo') {
         setSubSubgroup('comun');
-      } else if (subcategory === 'galleta') {
+      } else if (newSubcategory === 'galleta') {
         setSubSubgroup('comun');
+      } else if (newSubcategory === 'camionera') {
+        setSubSubgroup('comun');
+      } else if (newSubcategory === 'rustico') {
+        setSubSubgroup('algarrobo');
+      } else {
+        setSubSubgroup('');
       }
     } else {
       setSubSubgroup('');
     }
-  }, [subcategory, category]);
+  };
 
   const resetForm = () => {
     setIsEditing(false);
@@ -109,17 +119,17 @@ export default function AdminPanel({ products, onAddProduct, onUpdateProduct, on
   const handleEditClick = (product) => {
     setIsEditing(true);
     setEditId(product.id);
-    setName(product.name);
-    setDescription(product.description);
-    setPrice(product.price);
-    setImageUrl(product.image_url);
-    setImageFilePreview(product.image_url);
-    setCategory(product.category);
-    setSubcategory(product.subcategory);
+    setName(product.name || '');
+    setDescription(product.description || '');
+    setPrice(product.price !== undefined && product.price !== null ? String(product.price) : '');
+    setImageUrl(product.image_url || '');
+    setImageFilePreview(product.image_url || '');
+    setCategory(product.category || 'mates');
+    setSubcategory(product.subcategory || 'imperial');
     setSubSubgroup(product.sub_subgroup || '');
-    setIsOutOfStock(product.is_out_of_stock || false);
-    setIsPromo(product.is_promo || false);
-    setPromoPrice(product.promo_price || '');
+    setIsOutOfStock(!!product.is_out_of_stock);
+    setIsPromo(!!product.is_promo);
+    setPromoPrice(product.promo_price !== undefined && product.promo_price !== null ? String(product.promo_price) : '');
     
     // Desplazarse al formulario
     document.getElementById('admin-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
@@ -139,8 +149,8 @@ export default function AdminPanel({ products, onAddProduct, onUpdateProduct, on
     }
 
     const productData = {
-      name,
-      description,
+      name: name.trim(),
+      description: description.trim(),
       price: parseFloat(price),
       image_url: imageUrl,
       category,
@@ -295,7 +305,7 @@ export default function AdminPanel({ products, onAddProduct, onUpdateProduct, on
                   <label>Categoría Principal *</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={handleCategorySelectChange}
                     className="select-input"
                   >
                     <option value="mates">Mates</option>
@@ -310,12 +320,45 @@ export default function AdminPanel({ products, onAddProduct, onUpdateProduct, on
                     <label>Tipo de Mate (Subcategoría) *</label>
                     <select
                       value={subcategory}
-                      onChange={(e) => setSubcategory(e.target.value)}
+                      onChange={handleSubcategorySelectChange}
                       className="select-input"
                     >
                       <option value="imperial">Imperial</option>
                       <option value="torpedo">Torpedo</option>
                       <option value="galleta">Galleta</option>
+                      <option value="camionera">Camionero</option>
+                      <option value="rustico">Rústico</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Subcategorías dinámicas si es BOMBILLAS */}
+                {category === 'bombillas' && (
+                  <div className="form-group">
+                    <label>Tipo de Bombilla *</label>
+                    <select
+                      value={subcategory}
+                      onChange={(e) => setSubcategory(e.target.value)}
+                      className="select-input"
+                    >
+                      <option value="acero">Acero Inoxidable</option>
+                      <option value="alpaca">Alpaca</option>
+                      <option value="todas">Todas</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Subcategorías dinámicas si es ACCESORIOS */}
+                {category === 'accesorios' && (
+                  <div className="form-group">
+                    <label>Tipo de Accesorio *</label>
+                    <select
+                      value={subcategory}
+                      onChange={(e) => setSubcategory(e.target.value)}
+                      className="select-input"
+                    >
+                      <option value="todos">General / Accesorios</option>
+                      <option value="termos">Termos</option>
                     </select>
                   </div>
                 )}
@@ -360,6 +403,35 @@ export default function AdminPanel({ products, onAddProduct, onUpdateProduct, on
                     >
                       <option value="comun">Galleta Común</option>
                       <option value="virola">Con Virola</option>
+                    </select>
+                  </div>
+                )}
+
+                {category === 'mates' && subcategory === 'camionera' && (
+                  <div className="form-group">
+                    <label>Subgrupo Camionero *</label>
+                    <select
+                      value={subSubgroup}
+                      onChange={(e) => setSubSubgroup(e.target.value)}
+                      className="select-input"
+                    >
+                      <option value="comun">Camionero Común</option>
+                      <option value="algarrobo">Algarrobo</option>
+                      <option value="calabaza">Calabaza</option>
+                    </select>
+                  </div>
+                )}
+
+                {category === 'mates' && subcategory === 'rustico' && (
+                  <div className="form-group">
+                    <label>Subgrupo Rústico *</label>
+                    <select
+                      value={subSubgroup}
+                      onChange={(e) => setSubSubgroup(e.target.value)}
+                      className="select-input"
+                    >
+                      <option value="algarrobo">Algarrobo</option>
+                      <option value="comun">Común</option>
                     </select>
                   </div>
                 )}
