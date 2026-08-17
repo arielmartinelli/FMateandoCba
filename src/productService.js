@@ -993,5 +993,40 @@ export const productService = {
     } else {
       return true;
     }
+  },
+
+  // Exportar copia de seguridad (JSON)
+  exportBackup(products) {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products, null, 2));
+    const downloadAnchor = document.createElement('a');
+    const filename = `fmateando_backup_${new Date().toISOString().slice(0,10)}.json`;
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", filename);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  },
+
+  // Restaurar copia de seguridad o restablecer catálogo original
+  async restoreBackup(newProductsList) {
+    saveLocalProducts(newProductsList);
+    if (isSupabaseConfigured) {
+      try {
+        // Borrar productos actuales en Supabase
+        await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        // Re-insertar la lista restaurada
+        const cleanList = newProductsList.map(({ id, created_at, ...p }) => p);
+        const { data, error } = await supabase.from('products').insert(cleanList).select();
+        if (!error && data) return data;
+      } catch (err) {
+        console.error('Error restaurando en Supabase, guardado en LocalStorage:', err);
+      }
+    }
+    return newProductsList;
+  },
+
+  // Restablecer al catálogo inicial de 64 productos originales
+  async restoreInitialProducts() {
+    return await this.restoreBackup(INITIAL_PRODUCTS);
   }
 };

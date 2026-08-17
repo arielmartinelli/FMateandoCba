@@ -124,6 +124,37 @@ export default function App() {
     }
   };
 
+  const handleExportBackup = () => {
+    productService.exportBackup(products);
+  };
+
+  const handleRestoreBackup = async (file) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (Array.isArray(importedData)) {
+          const restored = await productService.restoreBackup(importedData);
+          setProducts(restored);
+          alert('¡Copia de seguridad restaurada con éxito!');
+        } else {
+          alert('El archivo no contiene un formato de catálogo válido.');
+        }
+      } catch (err) {
+        alert('Error al leer el archivo JSON.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleRestoreInitial = async () => {
+    if (window.confirm('¿Deseas restablecer el catálogo al estado inicial de 64 productos originales?')) {
+      const restored = await productService.restoreInitialProducts();
+      setProducts(restored);
+      alert('Catálogo restablecido a los 64 productos originales.');
+    }
+  };
+
   const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
@@ -236,6 +267,9 @@ export default function App() {
           onAddProduct={handleAddProduct}
           onUpdateProduct={handleUpdateProduct}
           onDeleteProduct={handleDeleteProduct}
+          onExportBackup={handleExportBackup}
+          onRestoreBackup={handleRestoreBackup}
+          onRestoreInitial={handleRestoreInitial}
         />
       ) : (
         <>

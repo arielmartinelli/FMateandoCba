@@ -1,13 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Plus, Edit2, Trash2, Check, RefreshCw, X, Image as ImageIcon } from 'lucide-react';
+import { Lock, Plus, Edit2, Trash2, Check, RefreshCw, X, Image as ImageIcon, Download, Upload, RotateCcw } from 'lucide-react';
 
-export default function AdminPanel({ products, onAddProduct, onUpdateProduct, onDeleteProduct }) {
+export default function AdminPanel({
+  products,
+  onAddProduct,
+  onUpdateProduct,
+  onDeleteProduct,
+  onExportBackup,
+  onRestoreBackup,
+  onRestoreInitial
+}) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
   // Estados del Formulario de Producto
   const [isEditing, setIsEditing] = useState(false);
+
+  const handleFileUploadBackup = (e) => {
+    const file = e.target.files[0];
+    if (file && onRestoreBackup) {
+      if (window.confirm('¿Estás seguro de restaurar el catálogo desde esta copia de seguridad? Se reemplazarán los productos actuales.')) {
+        onRestoreBackup(file);
+      }
+    }
+  };
   const [editId, setEditId] = useState(null);
   
   const [name, setName] = useState('');
@@ -214,9 +231,21 @@ export default function AdminPanel({ products, onAddProduct, onUpdateProduct, on
             <h2 style={{ fontSize: '2rem' }}>Panel de Administración</h2>
             <p style={{ color: 'var(--text-secondary)' }}>Gestiona los productos visibles en el catálogo</p>
           </div>
-          <button className="btn btn-outline" onClick={handleLogout}>
-            Cerrar Sesión
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn btn-secondary" onClick={onExportBackup} title="Descargar copia de seguridad en JSON" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
+              <Download size={15} /> Exportar Copia
+            </button>
+            <label className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', cursor: 'pointer', margin: 0 }} title="Restaurar productos desde un archivo JSON de respaldo">
+              <Upload size={15} /> Restaurar Copia
+              <input type="file" accept=".json" onChange={handleFileUploadBackup} style={{ display: 'none' }} />
+            </label>
+            <button className="btn btn-secondary" onClick={onRestoreInitial} title="Restablecer al catálogo original de 64 productos" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
+              <RotateCcw size={15} /> 64 Orig.
+            </button>
+            <button className="btn btn-outline" onClick={handleLogout} style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
 
         <div className="admin-layout">
