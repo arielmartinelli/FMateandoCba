@@ -37,9 +37,9 @@ export default function App() {
   };
 
   // Cargar productos al iniciar la aplicación (y bajo demanda desde el panel)
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async ({ forzarRecarga = false } = {}) => {
     setLoading(true);
-    const res = await productService.getProducts();
+    const res = await productService.getProducts({ forzarRecarga });
     setProducts(res.products || []);
     setDataSource(res.source);
     setDataError(res.ok ? res.warning || null : res.error);

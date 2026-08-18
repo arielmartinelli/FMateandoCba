@@ -41,11 +41,40 @@ const PRODUCT_COLUMNS = [
 const ok = (extra = {}) => ({ ok: true, error: null, ...extra });
 const fail = (error, extra = {}) => ({ ok: false, error, ...extra });
 
+/** Convierte cualquier cosa (string, Error, objeto de PostgREST) en texto legible. */
+function errorToText(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value !== 'object') return String(value);
+  // Supabase a veces devuelve el cuerpo del error anidado en vez de un string.
+  const nested = value.message ?? value.error ?? value.msg ?? value.hint ?? value.details;
+  if (nested !== undefined && nested !== value) return errorToText(nested);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 /** Traduce errores de Supabase/PostgREST a algo accionable en castellano. */
 export function describeDbError(err) {
   if (!err) return 'Error desconocido.';
   const code = err.code || err.status || '';
-  const msg = err.message || String(err);
+  const msg = [errorToText(err.message), errorToText(err.details), errorToText(err.hint)]
+    .filter(Boolean)
+    .join(' — ') || errorToText(err);
+
+  // El proyecto está suspendido por la plataforma: ninguna consulta va a funcionar
+  // hasta que el dueño lo destrabe. Se chequea primero porque tapa todo lo demás.
+  if (/exceed_egress_quota|egress quota/i.test(msg)) {
+    return 'Supabase suspendió el proyecto por superar la cuota de transferencia (egress) del plan. Ninguna lectura ni escritura va a funcionar hasta destrabarlo: entrá a supabase.com → tu proyecto → Settings → Billing, y subí el plan o quitá el tope de gasto. Mirá también Reports → Egress para ver qué lo consumió.';
+  }
+  if (/exceed_db_size|database size quota/i.test(msg)) {
+    return 'Supabase suspendió el proyecto por superar el tamaño máximo de base de datos del plan. Entrá a Settings → Billing para destrabarlo, o liberá espacio (las fotos guardadas como base64 dentro de las filas son la causa más común).';
+  }
+  if (/is restricted due to|project is paused|project is inactive/i.test(msg)) {
+    return `Supabase tiene el proyecto restringido o pausado, así que rechaza todas las consultas. Entrá a supabase.com → tu proyecto para reactivarlo. Mensaje original: ${msg}`;
+  }
 
   if (code === '22P02' || /invalid input syntax for type uuid/i.test(msg)) {
     return 'El producto que intentaste guardar no existe en la base (su ID no es un UUID válido). Suele pasar cuando el catálogo se está mostrando desde la copia local en vez de Supabase. Sembrá el catálogo en Supabase desde el panel y volvé a intentar.';
@@ -229,6 +258,51 @@ function saveLocalSnapshot(snapshot) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Caché del catálogo (ahorro de egress)                                      */
+/*                                                                             */
+/*  Bajar la tabla entera en cada visita fue lo que quemó la cuota de Supabase. */
+/*  Ahora se pide primero una huella mínima; si coincide con la guardada, se    */
+/*  reutiliza la copia local y no se descarga nada más.                         */
+/* -------------------------------------------------------------------------- */
+
+const LS_HUELLA = 'fmateando_huella_v1';
+
+/** Huella del catálogo: cuántos productos hay y cuál fue el último cambio. */
+function calcularHuella(filas) {
+  if (!Array.isArray(filas) || filas.length === 0) return null;
+  let ultimo = '';
+  for (const f of filas) {
+    const marca = f.updated_at || f.created_at || '';
+    if (marca > ultimo) ultimo = marca;
+  }
+  return ultimo ? `${filas.length}:${ultimo}` : null;
+}
+
+/** Consulta liviana: sólo id y updated_at (unos pocos KB para todo el catálogo). */
+async function obtenerHuella() {
+  try {
+    const { data, error } = await supabase.from('products').select('id, updated_at');
+    if (error) return null; // p. ej. la columna todavía no existe (migración v2 pendiente)
+    return calcularHuella(data);
+  } catch {
+    return null;
+  }
+}
+
+function guardarHuellaDe(filas) {
+  const huella = calcularHuella(filas);
+  if (huella) writeLocal(LS_HUELLA, huella);
+}
+
+function leerCache() {
+  const huella = readLocal(LS_HUELLA, null);
+  if (typeof huella !== 'string') return null;
+  const products = readLocal(LS_PRODUCTS, null);
+  if (!Array.isArray(products) || products.length === 0) return null;
+  return { huella, products: normalizeList(products) };
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Servicio                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -239,8 +313,12 @@ export const productService = {
    * Ya no hace seed automático a ciegas: si la tabla está vacía lo informa con
    * `needsSeed` para que el admin decida. Eso elimina la carrera que duplicaba
    * el catálogo y el bucle que reinsertaba en cada carga.
+   *
+   * Además evita bajar el catálogo entero en cada visita: primero pide una
+   * "huella" mínima (id + updated_at, unos pocos KB) y sólo si algo cambió
+   * descarga las filas completas. Fue lo que consumió 18,88 GB de egress.
    */
-  async getProducts() {
+  async getProducts({ forzarRecarga = false } = {}) {
     if (!isSupabaseConfigured) {
       return {
         ...ok(),
@@ -252,12 +330,23 @@ export const productService = {
     }
 
     try {
+      if (!forzarRecarga) {
+        const cache = leerCache();
+        if (cache) {
+          const huella = await obtenerHuella();
+          if (huella && huella === cache.huella) {
+            return { ...ok(), products: cache.products, source: 'supabase', needsSeed: false, cached: true };
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      guardarHuellaDe(data);
 
       const products = normalizeList(data);
 

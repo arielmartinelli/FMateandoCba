@@ -30,7 +30,7 @@ import { isSupabaseConfigured, supabaseUrl } from '../supabaseClient';
  * de 3 MB se guardaba como ~4 MB de texto dentro de la fila: reventaba la cuota
  * de localStorage (fallo mudo) y hacía enormes las respuestas de Supabase.
  */
-function compressImage(file, { maxSide = 1280, quality = 0.82 } = {}) {
+function compressImage(file, { maxSide = 1000, quality = 0.75 } = {}) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
@@ -193,11 +193,15 @@ export default function AdminPanel({
       setImageFilePreview(dataUrl);
       setImageUrl(dataUrl);
       const kb = approxKb(dataUrl);
-      setImageNote(`Optimizada a ${width}×${height}px · ~${kb} KB`);
-      if (kb > 900) {
+      setImageNote(
+        `Optimizada a ${width}×${height}px · ~${kb} KB · se guarda dentro de la base de datos`
+      );
+      // Cada foto incrustada se descarga en CADA visita al sitio. Es lo que
+      // consumió los 18,88 GB de egress: hay que avisarlo fuerte.
+      if (kb > 150) {
         say(
           'info',
-          'La imagen sigue siendo pesada. Si podés, subila a Supabase Storage y pegá la URL en vez de incrustarla.'
+          `Ojo: esta foto pesa ~${kb} KB y se guarda dentro de la base de datos, así que se descarga en cada visita al sitio. Lo recomendable es poner el archivo en public/fmateando/ del proyecto y pegar acá la ruta (ej: /fmateando/mates/imperial/mi-foto.webp).`
         );
       }
     } catch (err) {
@@ -487,10 +491,10 @@ export default function AdminPanel({
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               className="btn btn-secondary"
-              onClick={onReload}
+              onClick={() => onReload({ forzarRecarga: true })}
               disabled={busy}
               style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-              title="Volver a leer los productos desde la base"
+              title="Volver a leer los productos desde la base, ignorando la caché"
             >
               <RefreshCw size={15} /> Recargar
             </button>
@@ -560,7 +564,9 @@ export default function AdminPanel({
                   )}
                   <span>
                     <strong>{c.name}:</strong>{' '}
-                    <span style={{ color: c.ok ? 'var(--text-secondary)' : 'var(--accent-red)' }}>{c.detail}</span>
+                    <span style={{ color: c.ok ? 'var(--text-secondary)' : 'var(--accent-red)' }}>
+                      {typeof c.detail === 'string' ? c.detail : JSON.stringify(c.detail)}
+                    </span>
                   </span>
                 </li>
               ))}

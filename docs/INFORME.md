@@ -6,15 +6,34 @@
 
 ---
 
-## 1. Qué hay que hacer (resumen en 3 pasos)
+## 0. 🔴 Causa raíz confirmada: Supabase suspendió el proyecto
+
+El panel de diagnóstico devolvió `exceed_egress_quota`. El consumo real era **18,88 GB sobre 5 GB (378 %)** del plan Free, y Supabase restringió todos los servicios devolviendo `402` a cada consulta. Por eso el stock no se guardaba: **las escrituras venían fallando a nivel plataforma, no por el código.**
+
+**Por qué se consumió tanto.** La tabla `products` pesaba **63 MB** porque las fotos cargadas desde el panel se guardaban como base64 dentro de la columna `image_url` (filas individuales de 280–390 KB). Y `getProducts()` hacía `select('*')` de la tabla entera en cada carga de página: **cada visitante se bajaba los 63 MB completos**. Con unas 300 visitas se llega a 18 GB. También explica por qué el sitio cargaba lento.
+
+**Cómo se destraba, gratis.** El ciclo de facturación se reinicia el 23 de agosto de 2026 y las restricciones se levantan solas. No hay forma de levantarlas antes sin cambiar de plan. Crear otro proyecto no sirve: la cuota es **por organización**.
+
+**Cómo se evita que vuelva a pasar** (dos arreglos, ambos gratis):
+
+1. **Sacar las fotos de la base** con `scripts/extraer-imagenes.mjs` (ver sección 4b). Las convierte a archivos en `public/fmateando/subidas/`, que Vercel sirve por CDN con los 100 GB/mes gratis del plan Hobby. En la prueba, 10 MB de base64 pasaron a **4,6 KB** en la tabla.
+2. **Caché por huella** en `getProducts()`: primero pide sólo `id, updated_at` (unos pocos KB) y descarga las filas completas únicamente si algo cambió. Las visitas repetidas dejan de transferir el catálogo.
+
+Con las dos cosas, el consumo baja más de 1000 veces y los 5 GB gratis dejan de ser un problema.
+
+---
+
+## 1. Qué hay que hacer (en este orden)
 
 | # | Acción | Dónde | Tiempo |
 |---|--------|-------|--------|
+| 0 | **Esperar al 23/08 o subir el plan** para destrabar el proyecto | Supabase → Settings → Billing | — |
 | 1 | Ejecutar `supabase_migration_v2.sql` | Supabase → SQL Editor | 1 min |
-| 2 | Confirmar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en Vercel (los 3 entornos) y **redeploy** | Vercel → Settings → Environment Variables | 2 min |
-| 3 | Entrar al panel de admin y mirar el bloque **"Probar conexión"**: todos los chequeos en verde | El sitio | 1 min |
+| 2 | Correr `scripts/extraer-imagenes.mjs` y aplicar el SQL que genera | Tu máquina + SQL Editor | 15 min |
+| 3 | Confirmar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en Vercel (los 3 entornos) y **redeploy** | Vercel → Settings → Environment Variables | 2 min |
+| 4 | Entrar al panel de admin y mirar el bloque **"Probar conexión"**: todos los chequeos en verde | El sitio | 1 min |
 
-Si el paso 3 muestra algo en rojo, el propio panel dice qué falta y cómo arreglarlo.
+Nada de los pasos 1 a 4 va a funcionar mientras el proyecto siga restringido. Si el paso 4 muestra algo en rojo, el propio panel dice qué falta y cómo arreglarlo.
 
 ---
 
@@ -124,6 +143,43 @@ Tres capas, ninguna depende de las otras:
 Además, Supabase hace backups diarios de todo el proyecto en el plan Pro (en el plan Free hay que exportar manualmente — de ahí la utilidad del export JSON).
 
 **Opcional:** al final de `supabase_migration_v2.sql` hay un bloque comentado para programar una copia diaria a las 03:00 (hora Argentina) con `pg_cron`.
+
+---
+
+## 4b. Sacar las fotos de la base de datos
+
+`scripts/extraer-imagenes.mjs` se conecta **directo a PostgreSQL** (no por la API REST, así que funciona incluso con el proyecto restringido), baja cada foto base64, la recomprime a WebP y deja un `.sql` listo para aplicar.
+
+```powershell
+# 1. Dependencias
+npm install pg sharp --save-dev
+
+# 2. Cadena de conexión: Supabase → Connect → Session pooler → URI
+$env:DATABASE_URL="postgresql://postgres.xxxx:PASSWORD@aws-0-....pooler.supabase.com:5432/postgres"
+
+# 3. Extraer
+node scripts/extraer-imagenes.mjs
+```
+
+Genera `public/fmateando/subidas/*.webp` y `scripts/actualizar-imagenes.sql`.
+
+**El orden importa:**
+
+1. `git add -A && git commit -m "Mover imagenes base64 a archivos" && git push` — esperar el deploy de Vercel.
+2. Recién entonces aplicar `scripts/actualizar-imagenes.sql` en el SQL Editor.
+
+Si se aplica el SQL antes del deploy, las filas quedan apuntando a archivos que todavía no existen en el servidor y las fotos no se ven.
+
+El SQL guarda una copia de los base64 en `products_imagenes_backup` antes de tocar nada. Cuando confirmes que todo se ve bien:
+
+```sql
+DROP TABLE public.products_imagenes_backup;
+VACUUM FULL public.products;
+```
+
+**Verificado** contra PostgreSQL 16 con 5 productos de 2 MB cada uno: la columna `image_url` pasó de **10 MB a 4612 bytes**, con los archivos en disco y el respaldo intacto.
+
+De ahí en adelante, cargá las fotos poniéndolas en `public/fmateando/` y pegando la ruta en el panel (`/fmateando/mates/imperial/mi-foto.webp`). El campo de subida sigue funcionando, pero ahora comprime a 1000 px y **avisa** cuando la imagen pasa de 150 KB, explicando que se guarda dentro de la base.
 
 ---
 
