@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Truck, MapPin, Phone, Coffee, Heart, Menu, Shield } from 'lucide-react';
-import { productService } from './productService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ShoppingBag, Truck, MapPin, Phone, Coffee, Heart, Shield } from 'lucide-react';
+import { productService, isSoldOut, effectivePrice } from './productService';
 import Catalog from './components/Catalog';
 import CureGuide from './components/CureGuide';
 import Cart from './components/Cart';
@@ -14,6 +14,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [contactName, setContactName] = useState('');
   const [contactMessage, setContactMessage] = useState('');
+
+  // Estado real de la persistencia: de dónde salen los datos y si algo falló.
+  const [dataSource, setDataSource] = useState('local');
+  const [dataError, setDataError] = useState(null);
+  const [needsSeed, setNeedsSeed] = useState(false);
 
   const handleCustomQuery = (e) => {
     e.preventDefault();
@@ -31,20 +36,21 @@ export default function App() {
     setContactMessage('');
   };
 
-  // Cargar productos al iniciar la aplicación
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        const data = await productService.getProducts();
-        setProducts(data);
-      } catch (error) {
-        console.error('Error cargando productos:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProducts();
+  // Cargar productos al iniciar la aplicación (y bajo demanda desde el panel)
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
+    const res = await productService.getProducts();
+    setProducts(res.products || []);
+    setDataSource(res.source);
+    setDataError(res.ok ? res.warning || null : res.error);
+    setNeedsSeed(!!res.needsSeed);
+    setLoading(false);
+    return res;
   }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   // Cargar carrito desde LocalStorage si existe
   useEffect(() => {
@@ -62,14 +68,22 @@ export default function App() {
 
   // Manejar acciones del carrito de pedido
   const handleAddToCart = (product) => {
+    if (isSoldOut(product)) return;
+
     // Si el producto está en promoción, usar su precio promo, de lo contrario el regular
-    const finalPrice = product.is_promo && product.promo_price ? product.promo_price : product.price;
-    const cartProduct = { ...product, price: finalPrice };
+    const cartProduct = { ...product, price: effectivePrice(product) };
+
+    // Si la cantidad de stock está gestionada, no dejamos pedir más de lo que hay.
+    const maxQty =
+      product.stock_quantity !== null && product.stock_quantity !== undefined
+        ? product.stock_quantity
+        : Infinity;
 
     const existingItem = cart.find((item) => item.id === product.id);
     if (existingItem) {
+      const nextQty = Math.min(existingItem.quantity + 1, maxQty);
       const updated = cart.map((item) =>
-        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        item.id === product.id ? { ...item, quantity: nextQty } : item
       );
       saveCart(updated);
     } else {
@@ -100,59 +114,90 @@ export default function App() {
     saveCart([]);
   };
 
-  // Manejar operaciones CRUD del Administrador (se pasan a AdminPanel)
+  /* ------------------------------------------------------------------------ */
+  /*  Operaciones del Administrador                                            */
+  /*  Todas devuelven { ok, error } para que el panel muestre el resultado real */
+  /*  en vez de asumir éxito (que era el bug de fondo del stock).               */
+  /* ------------------------------------------------------------------------ */
+
   const handleAddProduct = async (productData) => {
-    const newProduct = await productService.addProduct(productData);
-    setProducts((prev) => [newProduct, ...prev]);
+    const res = await productService.addProduct(productData);
+    if (res.ok) {
+      setProducts((prev) => [res.product, ...prev]);
+      setNeedsSeed(false);
+    }
+    return res;
   };
 
   const handleUpdateProduct = async (id, updates) => {
-    const updatedProduct = await productService.updateProduct(id, updates);
-    if (updatedProduct) {
+    const res = await productService.updateProduct(id, updates);
+    if (res.ok) {
       setProducts((prev) =>
-        prev.map((p) => (String(p.id) === String(id) ? { ...p, ...updatedProduct } : p))
+        prev.map((p) => (String(p.id) === String(id) ? { ...p, ...res.product } : p))
       );
+      // Si el producto quedó sin stock, lo sacamos del carrito del visitante.
+      if (isSoldOut(res.product)) {
+        setCart((prev) => {
+          const next = prev.filter((item) => String(item.id) !== String(id));
+          localStorage.setItem('fmateando_cart', JSON.stringify(next));
+          return next;
+        });
+      }
     }
+    return res;
   };
 
   const handleDeleteProduct = async (id) => {
-    const success = await productService.deleteProduct(id);
-    if (success) {
+    const res = await productService.deleteProduct(id);
+    if (res.ok) {
       setProducts((prev) => prev.filter((p) => String(p.id) !== String(id)));
-      // También remover del carrito si el producto fue eliminado
-      setCart((prev) => prev.filter((item) => String(item.id) !== String(id)));
+      setCart((prev) => {
+        const next = prev.filter((item) => String(item.id) !== String(id));
+        localStorage.setItem('fmateando_cart', JSON.stringify(next));
+        return next;
+      });
     }
+    return res;
   };
 
-  const handleExportBackup = () => {
-    productService.exportBackup(products);
-  };
+  const handleExportBackup = () => productService.exportBackup(products);
 
-  const handleRestoreBackup = async (file) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const importedData = JSON.parse(e.target.result);
-        if (Array.isArray(importedData)) {
-          const restored = await productService.restoreBackup(importedData);
-          setProducts(restored);
-          alert('¡Copia de seguridad restaurada con éxito!');
-        } else {
-          alert('El archivo no contiene un formato de catálogo válido.');
-        }
-      } catch (err) {
-        alert('Error al leer el archivo JSON.');
-      }
-    };
-    reader.readAsText(file);
+  const handleRestoreBackupFile = async (file) => {
+    const text = await file.text();
+    const parsed = productService.parseBackup(text);
+    if (!parsed.ok) return parsed;
+
+    const res = await productService.restoreProducts(parsed.products, {
+      reason: `importación del archivo ${file.name}`,
+      currentProducts: products
+    });
+    if (res.ok) setProducts(res.products);
+    return res;
   };
 
   const handleRestoreInitial = async () => {
-    if (window.confirm('¿Deseas restablecer el catálogo al estado inicial de 64 productos originales?')) {
-      const restored = await productService.restoreInitialProducts();
-      setProducts(restored);
-      alert('Catálogo restablecido a los 64 productos originales.');
+    const res = await productService.restoreInitialProducts(products);
+    if (res.ok) setProducts(res.products);
+    return res;
+  };
+
+  const handleSeedCatalog = async (options) => {
+    const res = await productService.seedInitialCatalog(options);
+    if (res.ok) {
+      setProducts(res.products);
+      setNeedsSeed(false);
+      setDataSource(res.source);
     }
+    return res;
+  };
+
+  const handleCreateSnapshot = async (reason) =>
+    productService.createSnapshot(reason || 'copia manual', products);
+
+  const handleRestoreSnapshot = async (snapshotId) => {
+    const res = await productService.restoreSnapshot(snapshotId, products);
+    if (res.ok) setProducts(res.products);
+    return res;
   };
 
   const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -264,12 +309,20 @@ export default function App() {
       {showAdmin ? (
         <AdminPanel
           products={products}
+          loading={loading}
+          dataSource={dataSource}
+          dataError={dataError}
+          needsSeed={needsSeed}
+          onReload={loadProducts}
           onAddProduct={handleAddProduct}
           onUpdateProduct={handleUpdateProduct}
           onDeleteProduct={handleDeleteProduct}
           onExportBackup={handleExportBackup}
-          onRestoreBackup={handleRestoreBackup}
+          onRestoreBackupFile={handleRestoreBackupFile}
           onRestoreInitial={handleRestoreInitial}
+          onSeedCatalog={handleSeedCatalog}
+          onCreateSnapshot={handleCreateSnapshot}
+          onRestoreSnapshot={handleRestoreSnapshot}
         />
       ) : (
         <>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ShoppingBag, Search, Tag, X } from 'lucide-react';
+import { isSoldOut } from '../productService';
 
 export default function Catalog({ products, onAddToCart }) {
   const [selectedCategory, setSelectedCategory] = useState('todos'); // 'todos', 'mates', 'bombillas', 'accesorios'
@@ -261,16 +262,21 @@ export default function Catalog({ products, onAddToCart }) {
           {/* Grilla del catálogo */}
           <div className="catalog-grid">
             {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
-                 <div key={product.id} className={`product-card ${product.is_out_of_stock ? 'out-of-stock-card' : ''}`}>
+              filteredProducts.map((product) => {
+                const soldOut = isSoldOut(product);
+                const qty = product.stock_quantity;
+                const showLowStock = !soldOut && qty !== null && qty !== undefined && qty <= 3;
+                return (
+                 <div key={product.id} className={`product-card ${soldOut ? 'out-of-stock-card' : ''}`}>
                   <div className="product-img-wrapper">
                     <img
                       src={product.image_url}
                       alt={product.name}
                       className="product-img"
                       loading="lazy"
+                      decoding="async"
                     />
-                    {product.is_out_of_stock && (
+                    {soldOut && (
                       <div className="out-of-stock-overlay">
                         <span>AGOTADO</span>
                       </div>
@@ -287,6 +293,18 @@ export default function Catalog({ products, onAddToCart }) {
                   <div className="product-info">
                     <h3 className="product-name">{product.name}</h3>
                     <p className="product-desc">{product.description}</p>
+                    {showLowStock && (
+                      <p
+                        style={{
+                          margin: '0 0 0.4rem 0',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: 'var(--accent-gold, #d4af37)'
+                        }}
+                      >
+                        {qty === 1 ? 'Última unidad disponible' : `Sólo quedan ${qty} unidades`}
+                      </p>
+                    )}
                     <div className="product-footer">
                       {product.is_promo && product.promo_price ? (
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -303,12 +321,13 @@ export default function Catalog({ products, onAddToCart }) {
                         </span>
                       )}
                       
-                      {product.is_out_of_stock ? (
+                      {soldOut ? (
                         <button
                           className="btn-add-cart"
                           style={{ opacity: 0.5, cursor: 'not-allowed', background: '#222', color: '#777' }}
                           disabled
                           title="Sin stock disponible"
+                          aria-label={`${product.name}: sin stock disponible`}
                         >
                           <X size={15} />
                         </button>
@@ -317,6 +336,7 @@ export default function Catalog({ products, onAddToCart }) {
                           className="btn-add-cart"
                           onClick={() => onAddToCart(product)}
                           title="Agregar al pedido"
+                          aria-label={`Agregar ${product.name} al pedido`}
                         >
                           <ShoppingBag size={18} />
                         </button>
@@ -324,7 +344,8 @@ export default function Catalog({ products, onAddToCart }) {
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             ) : (
               <div className="no-products">
                 <Tag size={40} style={{ marginBottom: '1rem', color: 'var(--text-muted)' }} />

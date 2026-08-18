@@ -1,1032 +1,831 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import {
+  supabase,
+  isSupabaseConfigured,
+  supabaseConfigIssue,
+  supabaseUrl
+} from './supabaseClient';
+import { INITIAL_PRODUCTS } from './data/initialProducts';
 
-// Mock Data inicial elegante con las 64 imágenes reales de la carpeta fmateando
-const INITIAL_PRODUCTS = [
-  // MATES -> IMPERIAL (14)
-  {
-    id: 'm-imp-1',
-    name: 'Mate Imperial Calabaza Costura Uruguaya',
-    description: 'Calabaza brasileña seleccionada, forrado en cuero vacuno legítimo con costura uruguaya y virola de alpaca cincelada.',
-    price: 28900,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.00 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'calabaza',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-2',
-    name: 'Mate Imperial Algarrobo Virolado',
-    description: 'Tallado en madera noble de algarrobo, forrado en cuero premium con virola de alpaca cincelada artesanalmente.',
-    price: 26500,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.01 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'algarrobo',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-3',
-    name: 'Mate Imperial Premium Cincelado',
-    description: 'Calabaza premium extra-gruesa, forrado en cuero seleccionado con virola de alpaca ancha y apliques de bronce labrados a mano.',
-    price: 35000,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.01 (2).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'premium',
-    is_out_of_stock: false,
-    is_promo: true,
-    promo_price: 31900
-  },
-  {
-    id: 'm-imp-4',
-    name: 'Mate Imperial Calabaza Especial',
-    description: 'Calabaza seleccionada de paredes gruesas, virola alta de alpaca labrada.',
-    price: 29500,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.02.jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'calabaza',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-5',
-    name: 'Mate Imperial Algarrobo Cincelado',
-    description: 'Algarrobo seleccionado con tratamiento artesanal y virola de alpaca.',
-    price: 27000,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.03 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'algarrobo',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-6',
-    name: 'Mate Imperial Premium Alpaca',
-    description: 'Edición especial con virola ancha de alpaca pura y cuero vacuno de máxima calidad.',
-    price: 36500,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.05 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'premium',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-7',
-    name: 'Mate Imperial Calabaza Cuero Negro',
-    description: 'Forrado en cuero vacuno teñido en negro brillante con costura a contratono.',
-    price: 28900,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.06 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'calabaza',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-8',
-    name: 'Mate Imperial Algarrobo Labrado',
-    description: 'Madera de algarrobo con labrado rústico y virola de alpaca lisa.',
-    price: 26900,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.06.jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'algarrobo',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-9',
-    name: 'Mate Imperial Calabaza Seleccionada',
-    description: 'Calabaza uruguaya de forma impecable con virola cincelada artesanal.',
-    price: 29000,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.07 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'calabaza',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-10',
-    name: 'Mate Imperial Premium Flor de Lis',
-    description: 'Virola de alpaca trabajada con motivo Flor de Lis y apliques de bronce.',
-    price: 37000,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.10 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'premium',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-11',
-    name: 'Mate Imperial Calabaza Marrón',
-    description: 'Cuero sobrio marrón cuero con base de apoyo estable y virola alta.',
-    price: 28500,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.11 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'calabaza',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-12',
-    name: 'Mate Imperial Algarrobo Tradicional',
-    description: 'Madera de algarrobo macizo con excelente terminación suave al tacto.',
-    price: 26000,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.11.jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'algarrobo',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-imp-13',
-    name: 'Mate Imperial Premium Rey',
-    description: 'Diseño exclusivo de gran porte, ideal para regalar o coleccionar.',
-    price: 38000,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.12 (1).jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'premium',
-    is_out_of_stock: false,
-    is_promo: true,
-    promo_price: 34900
-  },
-  {
-    id: 'm-imp-14',
-    name: 'Mate Imperial Calabaza Virolada',
-    description: 'Calabaza natural con virola fina pulida a mano.',
-    price: 28900,
-    image_url: '/fmateando/mates/imperial/WhatsApp Image 2026-06-22 at 21.24.12.jpeg',
-    category: 'mates',
-    subcategory: 'imperial',
-    sub_subgroup: 'calabaza',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
+/* -------------------------------------------------------------------------- */
+/*  Constantes                                                                 */
+/* -------------------------------------------------------------------------- */
 
-  // MATES -> TORPEDO (18)
-  {
-    id: 'm-tor-1',
-    name: 'Mate Torpedo Calabaza Común',
-    description: 'Mate tipo torpedo de calabaza, forrado en cuero vaqueta con virola de acero inoxidable.',
-    price: 18500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.01.jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-2',
-    name: 'Mate Torpedo Base Bolita Bronce',
-    description: 'Torpedo de calabaza seleccionada con base reforzada de bolitas de bronce.',
-    price: 22500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.02 (1).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-3',
-    name: 'Mate Torpedo Cuero Negro',
-    description: 'Forma elegante estilizada con revestimiento de cuero vacuno negro.',
-    price: 18900,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.02 (2).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-4',
-    name: 'Mate Torpedo Base Bolita Alpaca',
-    description: 'Torpedo con base de cuatro patas de bolita en alpaca soldada.',
-    price: 23000,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.03.jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-5',
-    name: 'Mate Torpedo Calabaza Seleccionada',
-    description: 'Paredes gruesas para cebadas prolongadas con óptima temperatura.',
-    price: 19500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.04 (1).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-6',
-    name: 'Mate Torpedo Base Bolita Reforzado',
-    description: 'Base de gran soporte anti-vuelco con costura fina artesanal.',
-    price: 23500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.04 (2).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-7',
-    name: 'Mate Torpedo Virola Inox',
-    description: 'Virola lisa de acero quirúrgico que no altera el sabor del mate.',
-    price: 18500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.05 (2).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-8',
-    name: 'Mate Torpedo Base Bolita Cuero Vaqueta',
-    description: 'Cuero vaqueta rústico resistente al uso diario.',
-    price: 22900,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.05.jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-9',
-    name: 'Mate Torpedo Calabaza Cincelado',
-    description: 'Virola con labrado Cincelado criollo artesanal.',
-    price: 19900,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.06 (2).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-10',
-    name: 'Mate Torpedo Base Bolita Artesanal',
-    description: 'Base confeccionada a mano por artesanos orfebres.',
-    price: 23900,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.07 (3).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-11',
-    name: 'Mate Torpedo Cuero Marrón',
-    description: 'Tono café clásico con costura reforzada a tono.',
-    price: 18500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.07.jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-12',
-    name: 'Mate Torpedo Base Bolita Premium',
-    description: 'Selección de calabazas grandes con virola ancha.',
-    price: 24500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.08 (3).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-13',
-    name: 'Mate Torpedo Calabaza Gruesa',
-    description: 'Gran capacidad y durabilidad para amantes del mate largo.',
-    price: 19000,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.08.jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-14',
-    name: 'Mate Torpedo Base Bolita Especial',
-    description: 'Calabaza mediana muy cómoda al agarre.',
-    price: 22500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.09.jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-15',
-    name: 'Mate Torpedo Cuero Labrado',
-    description: 'Textura labrada en relieve sobre el cuero.',
-    price: 19500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.10 (2).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-16',
-    name: 'Mate Torpedo Base Bolita Uru',
-    description: 'Estilo uruguayo tradicional con base de bolitas de bronce.',
-    price: 23900,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.10 (3).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-17',
-    name: 'Mate Torpedo Calabaza Mini',
-    description: 'Formato compacto ideal para cebar individualmente.',
-    price: 17500,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.12 (2).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-tor-18',
-    name: 'Mate Torpedo Base Bolita XL',
-    description: 'Boca ancha y formato gigante con base de 4 soportes.',
-    price: 24900,
-    image_url: '/fmateando/mates/torpedo/WhatsApp Image 2026-06-22 at 21.24.12 (3).jpeg',
-    category: 'mates',
-    subcategory: 'torpedo',
-    sub_subgroup: 'base_bolita',
-    is_out_of_stock: false,
-    is_promo: true,
-    promo_price: 21900
-  },
+const LS_PRODUCTS = 'fmateando_products_v2';
+const LS_PRODUCTS_LEGACY = 'fmateando_products';
+const LS_SNAPSHOTS = 'fmateando_snapshots_v1';
+const LS_SEED_LOCK = 'fmateando_seed_lock';
 
-  // MATES -> GALLETA (6)
-  {
-    id: 'm-gal-1',
-    name: 'Mate Galleta Común',
-    description: 'Calabaza con forma aplanada natural tradicional, ideal para llevar de viaje.',
-    price: 12000,
-    image_url: '/fmateando/mates/galleta/WhatsApp Image 2026-06-22 at 21.24.03 (2).jpeg',
-    category: 'mates',
-    subcategory: 'galleta',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-gal-2',
-    name: 'Mate Galleta con Virola',
-    description: 'Calabaza tipo galleta con terminación de virola de aluminio pulido.',
-    price: 15500,
-    image_url: '/fmateando/mates/galleta/WhatsApp Image 2026-06-22 at 21.24.04.jpeg',
-    category: 'mates',
-    subcategory: 'galleta',
-    sub_subgroup: 'virola',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-gal-3',
-    name: 'Mate Galleta Rústico',
-    description: 'Calabaza aplanada silvestre curada al sol.',
-    price: 12500,
-    image_url: '/fmateando/mates/galleta/WhatsApp Image 2026-06-22 at 21.24.09 (2).jpeg',
-    category: 'mates',
-    subcategory: 'galleta',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-gal-4',
-    name: 'Mate Galleta Virola Pulida',
-    description: 'Boca con refuerzo metálico pulido y costura fina a mano.',
-    price: 15900,
-    image_url: '/fmateando/mates/galleta/WhatsApp Image 2026-06-22 at 21.24.10.jpeg',
-    category: 'mates',
-    subcategory: 'galleta',
-    sub_subgroup: 'virola',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-gal-5',
-    name: 'Mate Galleta Viajero',
-    description: 'Diseño liviano ideal para bolso matero y viajes.',
-    price: 13000,
-    image_url: '/fmateando/mates/galleta/WhatsApp Image 2026-06-22 at 21.24.11 (2).jpeg',
-    category: 'mates',
-    subcategory: 'galleta',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-gal-6',
-    name: 'Mate Galleta Virola Alpaca',
-    description: 'Terminación superior de alpaca con grabado artesanal.',
-    price: 16500,
-    image_url: '/fmateando/mates/galleta/WhatsApp Image 2026-06-22 at 21.24.11 (3).jpeg',
-    category: 'mates',
-    subcategory: 'galleta',
-    sub_subgroup: 'virola',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
+const MAX_LOCAL_SNAPSHOTS = 15;
+const MAX_REMOTE_SNAPSHOTS = 60;
 
-  // MATES -> CAMIONERA (3)
-  {
-    id: 'm-cam-1',
-    name: 'Mate Camionero Seleccionado',
-    description: 'Boca ancha, forrado en cuero vacuno grueso seleccionado con virola de acero inoxidable.',
-    price: 21900,
-    image_url: '/fmateando/mates/camionera/WhatsApp Image 2026-06-22 at 21.24.07 (2).jpeg',
-    category: 'mates',
-    subcategory: 'camionera',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-cam-2',
-    name: 'Mate Camionero Algarrobo',
-    description: 'Formato camionero cincelado en madera de algarrobo noble.',
-    price: 22500,
-    image_url: '/fmateando/mates/camionera/WhatsApp Image 2026-06-22 at 21.24.08 (1).jpeg',
-    category: 'mates',
-    subcategory: 'camionera',
-    sub_subgroup: 'algarrobo',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-cam-3',
-    name: 'Mate Camionero Calabaza Boca Ancha',
-    description: 'Boca súper amplia ideal para rendir la yerba al máximo.',
-    price: 21500,
-    image_url: '/fmateando/mates/camionera/WhatsApp Image 2026-06-22 at 21.24.08 (2).jpeg',
-    category: 'mates',
-    subcategory: 'camionera',
-    sub_subgroup: 'calabaza',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-
-  // MATES -> RUSTICO (2)
-  {
-    id: 'm-rus-1',
-    name: 'Mate Rústico Algarrobo',
-    description: 'Madera de algarrobo maciza torneada a mano, ideal para cebadas aromáticas.',
-    price: 14500,
-    image_url: '/fmateando/mates/rustico/WhatsApp Image 2026-06-22 at 21.24.00.jpeg',
-    category: 'mates',
-    subcategory: 'rustico',
-    sub_subgroup: 'algarrobo',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'm-rus-2',
-    name: 'Mate Rústico Torneado',
-    description: 'Cuerpo de madera tallada con surcos artesanales.',
-    price: 13900,
-    image_url: '/fmateando/mates/rustico/WhatsApp Image 2026-06-22 at 21.24.09 (1).jpeg',
-    category: 'mates',
-    subcategory: 'rustico',
-    sub_subgroup: 'comun',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-
-  // BOMBILLAS ACERO (8)
-  {
-    id: 'b-ace-1',
-    name: 'Bombilla Resorte Inoxidable',
-    description: 'Cuerpo de acero inoxidable quirúrgico con resorte regulable.',
-    price: 4900,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.14.jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-ace-2',
-    name: 'Bombilla Pico de Loro Acero',
-    description: 'Boquilla curvada anatómica de acero quirúrgico.',
-    price: 5500,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.14 (1).jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-ace-3',
-    name: 'Bombilla Cuchara Acero',
-    description: 'Filtro formato cuchara microperforado anti-obstrucción.',
-    price: 5200,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.15.jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-ace-4',
-    name: 'Bombilla Plana Inox',
-    description: 'Caño plano elegante de fácil limpieza.',
-    price: 4800,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.16.jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-ace-5',
-    name: 'Bombilla Anillo Dorado Acero',
-    description: 'Detalle de virola dorada en boquilla de acero.',
-    price: 6200,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.16 (1).jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-ace-6',
-    name: 'Bombilla Desarmable Acero',
-    description: 'Filtro desenroscable para limpieza e higiene profunda.',
-    price: 5900,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.16 (2).jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-ace-7',
-    name: 'Bombilla Curva Acero',
-    description: 'Diseño ergonómico ideal para mates imperiales.',
-    price: 5100,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.16 (3).jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-ace-8',
-    name: 'Bombilla Premium Inox',
-    description: 'Cuerpo reforzado pesado con boquilla pulida.',
-    price: 6500,
-    image_url: '/fmateando/bombillas/acero/WhatsApp Image 2026-06-23 at 12.24.18 (1).jpeg',
-    category: 'bombillas',
-    subcategory: 'acero',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-
-  // BOMBILLAS ALPACA (6)
-  {
-    id: 'b-alp-1',
-    name: 'Bombilla Pico de Loro Alpaca',
-    description: 'Alpaca maciza de alta calidad, boquilla anatómica y filtro desarmable.',
-    price: 9500,
-    image_url: '/fmateando/bombillas/alpaca/WhatsApp Image 2026-06-23 at 12.24.17.jpeg',
-    category: 'bombillas',
-    subcategory: 'alpaca',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-alp-2',
-    name: 'Bombilla Cincelada Alpaca',
-    description: 'Caño de alpaca cincelado a mano por orfebres.',
-    price: 10500,
-    image_url: '/fmateando/bombillas/alpaca/WhatsApp Image 2026-06-23 at 12.24.17 (1).jpeg',
-    category: 'bombillas',
-    subcategory: 'alpaca',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-alp-3',
-    name: 'Bombilla Cuchara Alpaca',
-    description: 'Filtro de cuchara en alpaca maciza con excelente filtrado.',
-    price: 9800,
-    image_url: '/fmateando/bombillas/alpaca/WhatsApp Image 2026-06-23 at 12.24.17 (2).jpeg',
-    category: 'bombillas',
-    subcategory: 'alpaca',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-alp-4',
-    name: 'Bombilla Boquilla Bronce Alpaca',
-    description: 'Cuerpo de alpaca con aplique de bronce grabado.',
-    price: 11200,
-    image_url: '/fmateando/bombillas/alpaca/WhatsApp Image 2026-06-23 at 12.24.17 (3).jpeg',
-    category: 'bombillas',
-    subcategory: 'alpaca',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-alp-5',
-    name: 'Bombilla Rey Alpaca',
-    description: 'Diseño exclusivo virola Rey de alpaca pesada.',
-    price: 11900,
-    image_url: '/fmateando/bombillas/alpaca/WhatsApp Image 2026-06-23 at 12.24.18.jpeg',
-    category: 'bombillas',
-    subcategory: 'alpaca',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'b-alp-6',
-    name: 'Bombilla Plana Alpaca Cincelada',
-    description: 'Formato plano en alpaca pulida a mano.',
-    price: 10200,
-    image_url: '/fmateando/bombillas/alpaca/WhatsApp Image 2026-06-23 at 12.24.18 (2).jpeg',
-    category: 'bombillas',
-    subcategory: 'alpaca',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-
-  // TERMOS (4)
-  {
-    id: 't-ter-1',
-    name: 'Termo Acero Inoxidable 1L',
-    description: 'Termo clásico de acero doble capa con pico cebador de precisión.',
-    price: 32000,
-    image_url: '/fmateando/termos/WhatsApp Image 2026-06-23 at 12.24.18 (3).jpeg',
-    category: 'accesorios',
-    subcategory: 'termos',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: true,
-    promo_price: 28500
-  },
-  {
-    id: 't-ter-2',
-    name: 'Termo Media Manija Acero',
-    description: 'Agarre cómodo con pico cebador cebada continua.',
-    price: 34500,
-    image_url: '/fmateando/termos/WhatsApp Image 2026-06-23 at 12.24.19 (1).jpeg',
-    category: 'accesorios',
-    subcategory: 'termos',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 't-ter-3',
-    name: 'Termo Sifón 1.2L',
-    description: 'Capacidad extra con sistema de vertido por presión.',
-    price: 38000,
-    image_url: '/fmateando/termos/WhatsApp Image 2026-06-23 at 12.24.19 (3).jpeg',
-    category: 'accesorios',
-    subcategory: 'termos',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 't-ter-4',
-    name: 'Termo Engomado Negro 1L',
-    description: 'Revestimiento engomado antideslizante de alta conservación térmica.',
-    price: 36000,
-    image_url: '/fmateando/termos/WhatsApp Image 2026-06-23 at 12.24.20.jpeg',
-    category: 'accesorios',
-    subcategory: 'termos',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-
-  // ACCESORIOS (3)
-  {
-    id: 'a-acc-1',
-    name: 'Bolso Matero de Cuero',
-    description: 'Portamates reforzado de cuero con correa regulable y divisiones internas.',
-    price: 24000,
-    image_url: '/fmateando/accesorios/WhatsApp Image 2026-06-23 at 12.24.19 (2).jpeg',
-    category: 'accesorios',
-    subcategory: 'todos',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'a-acc-2',
-    name: 'Combo Yerbera y Azucarera',
-    description: 'Lata yerbera y azucarera forrada en ecocuero de alta resistencia con pico vertedor.',
-    price: 11500,
-    image_url: '/fmateando/accesorios/WhatsApp Image 2026-06-23 at 12.25.10.jpeg',
-    category: 'accesorios',
-    subcategory: 'todos',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  },
-  {
-    id: 'a-acc-3',
-    name: 'Canasta Matera de Ecocuero',
-    description: 'Canasta rígida con compartimentos para mate, termo y yerbera.',
-    price: 18500,
-    image_url: '/fmateando/accesorios/WhatsApp Image 2026-06-23 at 12.25.11.jpeg',
-    category: 'accesorios',
-    subcategory: 'todos',
-    sub_subgroup: '',
-    is_out_of_stock: false,
-    is_promo: false,
-    promo_price: null
-  }
+/** Columnas reales de `products`. Todo lo demás se descarta antes de escribir. */
+const PRODUCT_COLUMNS = [
+  'slug',
+  'name',
+  'description',
+  'price',
+  'image_url',
+  'category',
+  'subcategory',
+  'sub_subgroup',
+  'is_out_of_stock',
+  'is_promo',
+  'promo_price',
+  'stock_quantity'
 ];
 
-// Helper para inicializar LocalStorage
-const getLocalProducts = () => {
-  const local = localStorage.getItem('fmateando_products');
-  if (!local) {
-    localStorage.setItem('fmateando_products', JSON.stringify(INITIAL_PRODUCTS));
-    return INITIAL_PRODUCTS;
+/* -------------------------------------------------------------------------- */
+/*  Utilidades                                                                 */
+/* -------------------------------------------------------------------------- */
+
+const ok = (extra = {}) => ({ ok: true, error: null, ...extra });
+const fail = (error, extra = {}) => ({ ok: false, error, ...extra });
+
+/** Traduce errores de Supabase/PostgREST a algo accionable en castellano. */
+export function describeDbError(err) {
+  if (!err) return 'Error desconocido.';
+  const code = err.code || err.status || '';
+  const msg = err.message || String(err);
+
+  if (code === '22P02' || /invalid input syntax for type uuid/i.test(msg)) {
+    return 'El producto que intentaste guardar no existe en la base (su ID no es un UUID válido). Suele pasar cuando el catálogo se está mostrando desde la copia local en vez de Supabase. Sembrá el catálogo en Supabase desde el panel y volvé a intentar.';
+  }
+  if (code === '42P01' || /relation .* does not exist/i.test(msg)) {
+    return 'La tabla no existe en Supabase. Ejecutá el script supabase_schema.sql en el SQL Editor de tu proyecto.';
+  }
+  if (code === '42703' || /column .* does not exist/i.test(msg)) {
+    return `Falta una columna en la tabla de Supabase (${msg}). Ejecutá supabase_migration_v2.sql en el SQL Editor.`;
+  }
+  if (code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'Row Level Security bloqueó la escritura. Revisá las políticas de la tabla en Supabase (ver supabase_migration_v2.sql).';
+  }
+  if (code === '23505' || /duplicate key/i.test(msg)) {
+    return 'Ya existe un producto con ese identificador (slug duplicado).';
+  }
+  if (code === '413' || /payload too large|value too long/i.test(msg)) {
+    return 'La imagen es demasiado pesada para guardarla dentro de la fila. Subí una foto más liviana o usá el Storage de Supabase.';
+  }
+  if (/Failed to fetch|NetworkError|fetch failed/i.test(msg)) {
+    return 'No se pudo contactar a Supabase (red, CORS o proyecto pausado). Verificá que el proyecto esté activo y que la URL sea correcta.';
+  }
+  if (/Invalid API key|JWT|apikey/i.test(msg)) {
+    return 'La clave de Supabase (VITE_SUPABASE_ANON_KEY) es inválida o no corresponde a este proyecto.';
+  }
+  return msg;
+}
+
+const toNumberOrNull = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Normaliza un producto venga de donde venga (Supabase, JSON, localStorage). */
+export function normalizeProduct(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const price = toNumberOrNull(raw.price);
+  return {
+    id: raw.id ?? raw.slug ?? null,
+    slug: raw.slug ?? null,
+    name: String(raw.name ?? '').trim(),
+    description: String(raw.description ?? '').trim(),
+    price: price === null ? 0 : price,
+    image_url: String(raw.image_url ?? ''),
+    category: raw.category ?? 'mates',
+    subcategory: raw.subcategory ?? 'todos',
+    sub_subgroup: raw.sub_subgroup ?? '',
+    is_out_of_stock: !!raw.is_out_of_stock,
+    is_promo: !!raw.is_promo,
+    promo_price: toNumberOrNull(raw.promo_price),
+    stock_quantity: toNumberOrNull(raw.stock_quantity),
+    created_at: raw.created_at ?? null
+  };
+}
+
+const normalizeList = (list) =>
+  (Array.isArray(list) ? list : []).map(normalizeProduct).filter(Boolean);
+
+/** Deja sólo las columnas que la tabla acepta. Nunca manda `id` ni `created_at`. */
+function toWritablePayload(product, { includeSlug = true } = {}) {
+  const payload = {};
+  for (const key of PRODUCT_COLUMNS) {
+    if (key === 'slug' && !includeSlug) continue;
+    if (product[key] === undefined) continue;
+    payload[key] = product[key];
+  }
+  if (payload.price !== undefined) payload.price = toNumberOrNull(payload.price) ?? 0;
+  if (payload.promo_price !== undefined) payload.promo_price = toNumberOrNull(payload.promo_price);
+  if (payload.stock_quantity !== undefined) payload.stock_quantity = toNumberOrNull(payload.stock_quantity);
+  if (payload.is_out_of_stock !== undefined) payload.is_out_of_stock = !!payload.is_out_of_stock;
+  if (payload.is_promo !== undefined) payload.is_promo = !!payload.is_promo;
+  return payload;
+}
+
+/**
+ * Un producto está sin stock si está marcado como agotado O si tiene cantidad
+ * gestionada y llegó a cero. Si `stock_quantity` es null la cantidad no se
+ * gestiona y manda el flag de siempre (no cambia el comportamiento actual).
+ */
+export function isSoldOut(product) {
+  if (!product) return false;
+  if (product.is_out_of_stock) return true;
+  return (
+    product.stock_quantity !== null &&
+    product.stock_quantity !== undefined &&
+    product.stock_quantity <= 0
+  );
+}
+
+export function effectivePrice(product) {
+  return product?.is_promo && product?.promo_price ? product.promo_price : product?.price ?? 0;
+}
+
+const isUuid = (value) =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+/* -------------------------------------------------------------------------- */
+/*  Copia local (espejo / modo sin Supabase)                                    */
+/* -------------------------------------------------------------------------- */
+
+const hasLocalStorage = (() => {
+  try {
+    const k = '__fm_test__';
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+function readLocal(key, fallback = null) {
+  if (!hasLocalStorage) return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Devuelve `{ ok, error }`; NO lanza. La cuota llena era un fallo mudo. */
+function writeLocal(key, value) {
+  if (!hasLocalStorage) {
+    return fail('El navegador tiene el almacenamiento local deshabilitado (¿modo incógnito?).');
   }
   try {
-    const parsed = JSON.parse(local);
-    if (!Array.isArray(parsed) || parsed.length < INITIAL_PRODUCTS.length) {
-      localStorage.setItem('fmateando_products', JSON.stringify(INITIAL_PRODUCTS));
-      return INITIAL_PRODUCTS;
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return ok();
+  } catch (err) {
+    if (err && (err.name === 'QuotaExceededError' || err.code === 22)) {
+      return fail(
+        'Se llenó el almacenamiento del navegador (límite ~5 MB). Casi siempre es por fotos pesadas guardadas como base64: subí imágenes más livianas o conectá Supabase Storage.'
+      );
     }
-    return parsed;
-  } catch (e) {
-    localStorage.setItem('fmateando_products', JSON.stringify(INITIAL_PRODUCTS));
-    return INITIAL_PRODUCTS;
+    return fail(err.message || 'No se pudo escribir en el almacenamiento local.');
   }
-};
+}
 
-const saveLocalProducts = (products) => {
-  localStorage.setItem('fmateando_products', JSON.stringify(products));
-};
+/**
+ * Lee la copia local. A diferencia de la versión anterior, NUNCA descarta lo
+ * guardado por tener menos productos que el catálogo inicial — ese chequeo era
+ * el que borraba todas las ediciones apenas se eliminaba un producto.
+ */
+function getLocalProducts() {
+  let stored = readLocal(LS_PRODUCTS, null);
+
+  if (!Array.isArray(stored)) {
+    const legacy = readLocal(LS_PRODUCTS_LEGACY, null);
+    if (Array.isArray(legacy) && legacy.length > 0) {
+      stored = legacy;
+      writeLocal(LS_PRODUCTS, legacy);
+    }
+  }
+
+  if (!Array.isArray(stored)) {
+    const seeded = INITIAL_PRODUCTS.map((p) => ({ ...p, id: p.slug }));
+    writeLocal(LS_PRODUCTS, seeded);
+    return normalizeList(seeded);
+  }
+
+  return normalizeList(stored);
+}
+
+const saveLocalProducts = (products) => writeLocal(LS_PRODUCTS, products);
+
+/* -------------------------------------------------------------------------- */
+/*  Snapshots (copias de seguridad)                                            */
+/* -------------------------------------------------------------------------- */
+
+function getLocalSnapshots() {
+  const list = readLocal(LS_SNAPSHOTS, []);
+  return Array.isArray(list) ? list : [];
+}
+
+function saveLocalSnapshot(snapshot) {
+  const list = [snapshot, ...getLocalSnapshots()].slice(0, MAX_LOCAL_SNAPSHOTS);
+  return writeLocal(LS_SNAPSHOTS, list);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Servicio                                                                   */
+/* -------------------------------------------------------------------------- */
 
 export const productService = {
-  // Obtener todos los productos
+  /* ---------------------------------------------------------------- lectura */
+
+  /**
+   * Ya no hace seed automático a ciegas: si la tabla está vacía lo informa con
+   * `needsSeed` para que el admin decida. Eso elimina la carrera que duplicaba
+   * el catálogo y el bucle que reinsertaba en cada carga.
+   */
   async getProducts() {
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .order('created_at', { ascending: false });
+    if (!isSupabaseConfigured) {
+      return {
+        ...ok(),
+        products: getLocalProducts(),
+        source: 'local',
+        needsSeed: false,
+        warning: supabaseConfigIssue
+      };
+    }
 
-        if (error) throw error;
-        
-        // Si Supabase devuelve vacío pero es la primera carga, podemos poblarlo opcionalmente
-        if (data.length === 0) {
-          // Poblar Supabase con la mock data inicial
-          const { data: inserted, error: insertError } = await supabase
-            .from('products')
-            .insert(INITIAL_PRODUCTS.map(({ id, ...p }) => p)) // quitamos id para que genere UUID
-            .select();
-          if (insertError) {
-            console.error('Error insertando datos iniciales en Supabase:', insertError);
-            return INITIAL_PRODUCTS;
-          }
-          return inserted;
-        }
-        return data;
-      } catch (err) {
-        console.error('Error con Supabase, usando LocalStorage:', err);
-        return getLocalProducts();
-      }
-    } else {
-      return getLocalProducts();
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const products = normalizeList(data);
+
+      // La copia local pasa a ser sólo un espejo de lectura para emergencias.
+      if (products.length > 0) saveLocalProducts(products);
+
+      return {
+        ...ok(),
+        products,
+        source: 'supabase',
+        needsSeed: products.length === 0
+      };
+    } catch (err) {
+      console.error('[fmateando] getProducts falló:', err);
+      return {
+        ...fail(describeDbError(err)),
+        products: getLocalProducts(),
+        source: 'local',
+        needsSeed: false
+      };
     }
   },
 
-  // Agregar un producto nuevo
-  async addProduct(product) {
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .insert([product])
-          .select();
-        
-        if (error) throw error;
-        if (data && data.length > 0) return data[0];
-        throw new Error('No data returned from Supabase insert');
-      } catch (err) {
-        console.error('Error agregando a Supabase, usando LocalStorage:', err);
-        const local = getLocalProducts();
-        const newProduct = { ...product, id: `local-${Date.now()}` };
-        local.unshift(newProduct);
-        saveLocalProducts(local);
-        return newProduct;
-      }
-    } else {
+  /* -------------------------------------------------------------- escritura */
+
+  async addProduct(input) {
+    const product = normalizeProduct(input);
+    if (!product) return fail('Datos de producto inválidos.');
+
+    if (!product.slug) {
+      product.slug = `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    if (!isSupabaseConfigured) {
       const local = getLocalProducts();
-      const newProduct = { ...product, id: `local-${Date.now()}` };
-      local.unshift(newProduct);
-      saveLocalProducts(local);
-      return newProduct;
+      const created = { ...product, id: product.slug, created_at: new Date().toISOString() };
+      const write = saveLocalProducts([created, ...local]);
+      if (!write.ok) return fail(write.error);
+      return { ...ok(), product: created, source: 'local' };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .insert([toWritablePayload(product)])
+        .select();
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        return fail(
+          'Supabase aceptó la petición pero no devolvió la fila creada. Suele ser una política RLS de SELECT que oculta el registro nuevo.'
+        );
+      }
+      return { ...ok(), product: normalizeProduct(data[0]), source: 'supabase' };
+    } catch (err) {
+      console.error('[fmateando] addProduct falló:', err);
+      return fail(describeDbError(err));
     }
   },
 
-  // Modificar precio y/o foto de un producto
+  /**
+   * Actualiza un producto. Clave del arreglo: si Supabase devuelve 0 filas
+   * afectadas se considera ERROR, no éxito. Antes ese caso caía en el fallback
+   * a localStorage y la UI decía "actualizado con éxito" sin haber guardado nada.
+   */
   async updateProduct(id, updates) {
-    // Siempre actualizar LocalStorage para garantizar sincronización persistente local
-    const local = getLocalProducts();
-    const updatedLocal = local.map(p => String(p.id) === String(id) ? { ...p, ...updates } : p);
-    saveLocalProducts(updatedLocal);
-    const localResult = updatedLocal.find(p => String(p.id) === String(id)) || { id, ...updates };
+    if (id === null || id === undefined || id === '') {
+      return fail('No se indicó qué producto actualizar.');
+    }
 
-    if (isSupabaseConfigured) {
-      try {
+    const patch = toWritablePayload(normalizeProduct({ ...updates, id }), { includeSlug: false });
+
+    if (!isSupabaseConfigured) {
+      const local = getLocalProducts();
+      const exists = local.some((p) => String(p.id) === String(id));
+      if (!exists) return fail('El producto no existe en la copia local.');
+      const next = local.map((p) => (String(p.id) === String(id) ? { ...p, ...patch } : p));
+      const write = saveLocalProducts(next);
+      if (!write.ok) return fail(write.error);
+      return {
+        ...ok(),
+        product: next.find((p) => String(p.id) === String(id)),
+        source: 'local'
+      };
+    }
+
+    if (!isUuid(String(id))) {
+      return fail(
+        `El producto tiene el ID "${id}", que no es un UUID de Supabase: el catálogo se está mostrando desde la copia local. Usá "Sembrar catálogo en Supabase" en el panel y recargá antes de editar.`
+      );
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .update(patch)
+        .eq('id', id)
+        .select();
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return fail(
+          'Supabase no actualizó ninguna fila (0 filas afectadas). O el producto ya no existe, o una política RLS está bloqueando el UPDATE. Ejecutá supabase_migration_v2.sql y volvé a intentar.'
+        );
+      }
+
+      const product = normalizeProduct(data[0]);
+
+      const local = getLocalProducts();
+      saveLocalProducts(local.map((p) => (String(p.id) === String(id) ? product : p)));
+
+      return { ...ok(), product, source: 'supabase' };
+    } catch (err) {
+      console.error('[fmateando] updateProduct falló:', err);
+      return fail(describeDbError(err));
+    }
+  },
+
+  async deleteProduct(id) {
+    if (!isSupabaseConfigured) {
+      const local = getLocalProducts();
+      const write = saveLocalProducts(local.filter((p) => String(p.id) !== String(id)));
+      if (!write.ok) return fail(write.error);
+      return { ...ok(), source: 'local' };
+    }
+
+    if (!isUuid(String(id))) {
+      return fail(`El producto con ID "${id}" no existe en Supabase (no es un UUID).`);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id)
+        .select();
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        return fail(
+          'Supabase no eliminó ninguna fila. Puede ser una política RLS de DELETE o que el producto ya no exista.'
+        );
+      }
+
+      const local = getLocalProducts();
+      saveLocalProducts(local.filter((p) => String(p.id) !== String(id)));
+
+      return { ...ok(), source: 'supabase' };
+    } catch (err) {
+      console.error('[fmateando] deleteProduct falló:', err);
+      return fail(describeDbError(err));
+    }
+  },
+
+  /**
+   * Ajusta sólo la cantidad de stock, sin tocar ningún otro campo.
+   * `quantity === null` = "no gestionar cantidad" (vuelve al flag de agotado).
+   */
+  async setStockQuantity(id, quantity) {
+    const value =
+      quantity === null || quantity === '' ? null : Math.max(0, Math.trunc(Number(quantity) || 0));
+    return this.updateProduct(id, { stock_quantity: value });
+  },
+
+  async setOutOfStock(id, isOut) {
+    return this.updateProduct(id, { is_out_of_stock: !!isOut });
+  },
+
+  /* ---------------------------------------------------------------- siembra */
+
+  /**
+   * Siembra el catálogo inicial. Es idempotente: usa `slug` como clave de
+   * conflicto, así que ejecutarlo dos veces no duplica nada.
+   */
+  async seedInitialCatalog({ force = false } = {}) {
+    if (!isSupabaseConfigured) {
+      const write = saveLocalProducts(INITIAL_PRODUCTS.map((p) => ({ ...p, id: p.slug })));
+      if (!write.ok) return fail(write.error);
+      return { ...ok(), products: getLocalProducts(), source: 'local' };
+    }
+
+    if (!force && hasLocalStorage && window.localStorage.getItem(LS_SEED_LOCK) === '1') {
+      return fail('La siembra ya se intentó en esta sesión. Recargá la página o usá "Forzar siembra".');
+    }
+
+    try {
+      const { count, error: countError } = await supabase
+        .from('products')
+        .select('id', { count: 'exact', head: true });
+
+      if (countError) throw countError;
+
+      if (!force && (count ?? 0) > 0) {
+        return fail(`La tabla ya tiene ${count} productos. No se sembró nada para no duplicar.`);
+      }
+
+      const rows = INITIAL_PRODUCTS.map((p) => toWritablePayload(normalizeProduct(p)));
+      const { data, error } = await supabase
+        .from('products')
+        .upsert(rows, { onConflict: 'slug', ignoreDuplicates: false })
+        .select();
+
+      if (error) throw error;
+
+      if (hasLocalStorage) window.localStorage.setItem(LS_SEED_LOCK, '1');
+      const products = normalizeList(data);
+      saveLocalProducts(products);
+      return { ...ok(), products, source: 'supabase' };
+    } catch (err) {
+      console.error('[fmateando] seedInitialCatalog falló:', err);
+      return fail(describeDbError(err));
+    }
+  },
+
+  /* ---------------------------------------------------------- backups JSON */
+
+  exportBackup(products) {
+    const payload = {
+      app: 'fmateando-cba',
+      version: 2,
+      exported_at: new Date().toISOString(),
+      source: isSupabaseConfigured ? 'supabase' : 'local',
+      count: Array.isArray(products) ? products.length : 0,
+      products: normalizeList(products)
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fmateando_backup_${new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')
+      .slice(0, 19)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return ok({ count: payload.count });
+  },
+
+  /** Acepta el formato nuevo (`{products:[...]}`) y el viejo (array pelado). */
+  parseBackup(text) {
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return fail('El archivo no es un JSON válido.');
+    }
+    const list = Array.isArray(parsed) ? parsed : parsed?.products;
+    if (!Array.isArray(list) || list.length === 0) {
+      return fail('El archivo no contiene una lista de productos.');
+    }
+    const products = normalizeList(list).filter((p) => p.name && p.image_url);
+    if (products.length === 0) {
+      return fail('Ningún producto del archivo tiene nombre e imagen válidos.');
+    }
+    return { ...ok(), products, skipped: list.length - products.length };
+  },
+
+  /* -------------------------------------------------------- snapshots (BD) */
+
+  /** Guarda una copia completa del catálogo antes/después de un cambio grande. */
+  async createSnapshot(reason, products) {
+    const list = normalizeList(products);
+    if (list.length === 0) return fail('No hay productos para respaldar.');
+
+    const snapshot = {
+      id: `local-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      reason: String(reason || 'manual').slice(0, 120),
+      product_count: list.length,
+      payload: list
+    };
+
+    if (!isSupabaseConfigured) {
+      const write = saveLocalSnapshot(snapshot);
+      if (!write.ok) return fail(write.error);
+      return { ...ok(), snapshot, source: 'local' };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('catalog_backups')
+        .insert([
+          {
+            reason: snapshot.reason,
+            product_count: snapshot.product_count,
+            payload: snapshot.payload
+          }
+        ])
+        .select('id, created_at, reason, product_count');
+
+      if (error) throw error;
+
+      this.pruneSnapshots().catch(() => {});
+
+      return { ...ok(), snapshot: data?.[0] ?? snapshot, source: 'supabase' };
+    } catch (err) {
+      console.error('[fmateando] createSnapshot falló:', err);
+      // La copia local siempre queda, aunque Supabase falle.
+      saveLocalSnapshot(snapshot);
+      return fail(describeDbError(err), { snapshot, source: 'local' });
+    }
+  },
+
+  async listSnapshots() {
+    if (!isSupabaseConfigured) {
+      return {
+        ...ok(),
+        snapshots: getLocalSnapshots().map((s) => ({
+          id: s.id,
+          created_at: s.created_at,
+          reason: s.reason,
+          product_count: s.product_count ?? s.payload?.length ?? 0
+        })),
+        source: 'local'
+      };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('catalog_backups')
+        .select('id, created_at, reason, product_count')
+        .order('created_at', { ascending: false })
+        .limit(MAX_REMOTE_SNAPSHOTS);
+
+      if (error) throw error;
+      return { ...ok(), snapshots: data ?? [], source: 'supabase' };
+    } catch (err) {
+      console.error('[fmateando] listSnapshots falló:', err);
+      return {
+        ...fail(describeDbError(err)),
+        snapshots: getLocalSnapshots().map((s) => ({
+          id: s.id,
+          created_at: s.created_at,
+          reason: s.reason,
+          product_count: s.product_count ?? 0
+        })),
+        source: 'local'
+      };
+    }
+  },
+
+  async getSnapshotProducts(snapshotId) {
+    if (!isSupabaseConfigured || String(snapshotId).startsWith('local-')) {
+      const snap = getLocalSnapshots().find((s) => String(s.id) === String(snapshotId));
+      if (!snap) return fail('No se encontró esa copia de seguridad.');
+      return { ...ok(), products: normalizeList(snap.payload) };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('catalog_backups')
+        .select('payload')
+        .eq('id', snapshotId)
+        .single();
+
+      if (error) throw error;
+      return { ...ok(), products: normalizeList(data?.payload) };
+    } catch (err) {
+      return fail(describeDbError(err));
+    }
+  },
+
+  async pruneSnapshots() {
+    if (!isSupabaseConfigured) return ok();
+    try {
+      const { data, error } = await supabase
+        .from('catalog_backups')
+        .select('id')
+        .order('created_at', { ascending: false })
+        .range(MAX_REMOTE_SNAPSHOTS, MAX_REMOTE_SNAPSHOTS + 200);
+
+      if (error || !data || data.length === 0) return ok();
+      await supabase
+        .from('catalog_backups')
+        .delete()
+        .in(
+          'id',
+          data.map((r) => r.id)
+        );
+      return ok();
+    } catch {
+      return ok();
+    }
+  },
+
+  /* ------------------------------------------------------------ restauración */
+
+  /**
+   * Restaura una lista completa. Antes borraba TODO y después insertaba: si el
+   * insert fallaba te quedabas sin catálogo. Ahora: snapshot previo → upsert por
+   * slug → recién entonces borra lo que sobra. Si algo falla, nada se perdió.
+   */
+  async restoreProducts(list, { reason = 'restauración manual', currentProducts = [] } = {}) {
+    const incoming = normalizeList(list);
+    if (incoming.length === 0) return fail('La lista a restaurar está vacía.');
+
+    if (currentProducts.length > 0) {
+      await this.createSnapshot(`antes de: ${reason}`, currentProducts);
+    }
+
+    // Garantizamos un slug estable para poder hacer upsert idempotente.
+    const seen = new Set();
+    const withSlugs = incoming.map((p, i) => {
+      let slug =
+        p.slug ||
+        `restored-${(p.name || 'item')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 48)}`;
+      while (seen.has(slug)) slug = `${slug}-${i}`;
+      seen.add(slug);
+      return { ...p, slug };
+    });
+
+    if (!isSupabaseConfigured) {
+      const write = saveLocalProducts(withSlugs.map((p) => ({ ...p, id: p.id || p.slug })));
+      if (!write.ok) return fail(write.error);
+      return { ...ok(), products: getLocalProducts(), source: 'local' };
+    }
+
+    try {
+      const rows = withSlugs.map((p) => toWritablePayload(p));
+      const { error } = await supabase
+        .from('products')
+        .upsert(rows, { onConflict: 'slug', ignoreDuplicates: false })
+        .select('id');
+
+      if (error) throw error;
+
+      const keptSlugs = new Set(withSlugs.map((p) => p.slug));
+      const { data: all, error: listError } = await supabase.from('products').select('id, slug');
+      if (!listError && Array.isArray(all)) {
+        const toDelete = all.filter((r) => !keptSlugs.has(r.slug)).map((r) => r.id);
+        if (toDelete.length > 0) {
+          await supabase.from('products').delete().in('id', toDelete);
+        }
+      }
+
+      const { data: fresh } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const products = normalizeList(fresh);
+      saveLocalProducts(products);
+      return { ...ok(), products, source: 'supabase' };
+    } catch (err) {
+      console.error('[fmateando] restoreProducts falló:', err);
+      return fail(describeDbError(err));
+    }
+  },
+
+  async restoreSnapshot(snapshotId, currentProducts = []) {
+    const res = await this.getSnapshotProducts(snapshotId);
+    if (!res.ok) return res;
+    return this.restoreProducts(res.products, {
+      reason: `restauración de copia ${snapshotId}`,
+      currentProducts
+    });
+  },
+
+  async restoreInitialProducts(currentProducts = []) {
+    return this.restoreProducts(INITIAL_PRODUCTS, {
+      reason: 'restablecer catálogo original de 64 productos',
+      currentProducts
+    });
+  },
+
+  /* ------------------------------------------------------------ diagnóstico */
+
+  /** Prueba real de lectura y escritura. Es lo que alimenta el panel de estado. */
+  async diagnose() {
+    const report = {
+      configured: isSupabaseConfigured,
+      url: supabaseUrl ? supabaseUrl.replace(/^https:\/\//, '') : '(sin configurar)',
+      configIssue: supabaseConfigIssue,
+      localStorage: hasLocalStorage,
+      productCount: null,
+      checks: []
+    };
+
+    const push = (name, okFlag, detail) => report.checks.push({ name, ok: okFlag, detail });
+
+    if (!isSupabaseConfigured) {
+      push('Variables de entorno', false, supabaseConfigIssue);
+      push(
+        'Modo actual',
+        false,
+        'Guardando SÓLO en el navegador (localStorage). Los cambios no se ven en otros dispositivos y se pierden al limpiar el navegador.'
+      );
+      return report;
+    }
+
+    push('Variables de entorno', true, 'VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY presentes.');
+
+    // 1. Lectura
+    try {
+      const { count, error } = await supabase
+        .from('products')
+        .select('id', { count: 'exact', head: true });
+      if (error) throw error;
+      report.productCount = count ?? 0;
+      push('Lectura de products', true, `${count ?? 0} productos en la base.`);
+    } catch (err) {
+      push('Lectura de products', false, describeDbError(err));
+      return report;
+    }
+
+    // 2. Columnas nuevas
+    try {
+      const { error } = await supabase.from('products').select('slug, stock_quantity').limit(1);
+      if (error) throw error;
+      push('Columnas slug y stock_quantity', true, 'Presentes.');
+    } catch (err) {
+      push('Columnas slug y stock_quantity', false, describeDbError(err));
+    }
+
+    // 3. Escritura real (round-trip sobre una fila propia, sin efectos)
+    try {
+      const { data: sample, error: readErr } = await supabase
+        .from('products')
+        .select('id, is_out_of_stock')
+        .limit(1);
+      if (readErr) throw readErr;
+
+      if (!sample || sample.length === 0) {
+        push('Escritura', false, 'No hay productos para probar. Sembrá el catálogo primero.');
+      } else {
+        const row = sample[0];
         const { data, error } = await supabase
           .from('products')
-          .update(updates)
-          .eq('id', id)
-          .select();
-        
+          .update({ is_out_of_stock: row.is_out_of_stock })
+          .eq('id', row.id)
+          .select('id');
         if (error) throw error;
-        if (data && data.length > 0) {
-          return data[0];
+        if (!data || data.length === 0) {
+          push(
+            'Escritura',
+            false,
+            '0 filas afectadas: RLS está bloqueando el UPDATE. Ejecutá supabase_migration_v2.sql en el SQL Editor de Supabase. Ésta es la causa más probable de que el stock no se guarde.'
+          );
+        } else {
+          push('Escritura', true, 'UPDATE confirmado por la base (round-trip OK).');
         }
-        return localResult;
-      } catch (err) {
-        console.error('Error actualizando en Supabase, usando LocalStorage:', err);
-        return localResult;
       }
-    } else {
-      return localResult;
+    } catch (err) {
+      push('Escritura', false, describeDbError(err));
     }
-  },
 
-  // Eliminar un producto
-  async deleteProduct(id) {
-    const local = getLocalProducts();
-    const filtered = local.filter(p => String(p.id) !== String(id));
-    saveLocalProducts(filtered);
-
-    if (isSupabaseConfigured) {
-      try {
-        const { error } = await supabase
-          .from('products')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
-        return true;
-      } catch (err) {
-        console.error('Error eliminando de Supabase, usando LocalStorage:', err);
-        return true;
-      }
-    } else {
-      return true;
+    // 4. Tabla de backups
+    try {
+      const { error } = await supabase
+        .from('catalog_backups')
+        .select('id', { count: 'exact', head: true });
+      if (error) throw error;
+      push('Tabla catalog_backups', true, 'Lista para guardar copias de seguridad.');
+    } catch (err) {
+      push('Tabla catalog_backups', false, describeDbError(err));
     }
-  },
 
-  // Exportar copia de seguridad (JSON)
-  exportBackup(products) {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products, null, 2));
-    const downloadAnchor = document.createElement('a');
-    const filename = `fmateando_backup_${new Date().toISOString().slice(0,10)}.json`;
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", filename);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  },
-
-  // Restaurar copia de seguridad o restablecer catálogo original
-  async restoreBackup(newProductsList) {
-    saveLocalProducts(newProductsList);
-    if (isSupabaseConfigured) {
-      try {
-        // Borrar productos actuales en Supabase
-        await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        // Re-insertar la lista restaurada
-        const cleanList = newProductsList.map(({ id, created_at, ...p }) => p);
-        const { data, error } = await supabase.from('products').insert(cleanList).select();
-        if (!error && data) return data;
-      } catch (err) {
-        console.error('Error restaurando en Supabase, guardado en LocalStorage:', err);
-      }
-    }
-    return newProductsList;
-  },
-
-  // Restablecer al catálogo inicial de 64 productos originales
-  async restoreInitialProducts() {
-    return await this.restoreBackup(INITIAL_PRODUCTS);
+    return report;
   }
 };
+
+export { INITIAL_PRODUCTS };
