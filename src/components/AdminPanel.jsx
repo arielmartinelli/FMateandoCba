@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Lock,
   Plus,
@@ -17,7 +17,8 @@ import {
   Sprout,
   Minus,
   Loader2,
-  UploadCloud
+  UploadCloud,
+  Search
 } from 'lucide-react';
 import { productService, isSoldOut } from '../productService';
 import { isSupabaseConfigured, supabaseUrl } from '../supabaseClient';
@@ -234,6 +235,64 @@ export default function AdminPanel({
   };
 
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  /* ------------------------------------------------- Filtros de la tabla --- */
+
+  const [fBusqueda, setFBusqueda] = useState('');
+  const [fCategoria, setFCategoria] = useState('todas');
+  const [fSubcategoria, setFSubcategoria] = useState('todas');
+  const [fEstado, setFEstado] = useState('todos'); // todos | agotados | disponibles | promo
+
+  // Las subcategorías salen de los productos reales, no de una lista fija:
+  // así aparecen solas las que vaya creando quien administra el catálogo.
+  const subcategorias = useMemo(() => {
+    if (fCategoria === 'todas') return [];
+    return [
+      ...new Set(
+        products
+          .filter((p) => p.category === fCategoria)
+          .map((p) => p.subcategory)
+          .filter(Boolean)
+      )
+    ].sort();
+  }, [products, fCategoria]);
+
+  const productosFiltrados = useMemo(() => {
+    const q = fBusqueda.trim().toLowerCase();
+
+    return products.filter((p) => {
+      if (fCategoria !== 'todas' && p.category !== fCategoria) return false;
+      if (fSubcategoria !== 'todas' && p.subcategory !== fSubcategoria) return false;
+
+      if (fEstado === 'agotados' && !isSoldOut(p)) return false;
+      if (fEstado === 'disponibles' && isSoldOut(p)) return false;
+      if (fEstado === 'promo' && !p.is_promo) return false;
+
+      if (q) {
+        const enNombre = p.name?.toLowerCase().includes(q);
+        const enDesc = p.description?.toLowerCase().includes(q);
+        return enNombre || enDesc;
+      }
+      return true;
+    });
+  }, [products, fBusqueda, fCategoria, fSubcategoria, fEstado]);
+
+  const cambiarCategoria = (cat) => {
+    setFCategoria(cat);
+    setFSubcategoria('todas');
+  };
+
+  const limpiarFiltros = () => {
+    setFBusqueda('');
+    setFCategoria('todas');
+    setFSubcategoria('todas');
+    setFEstado('todos');
+  };
+
+  const hayFiltros =
+    fBusqueda !== '' || fCategoria !== 'todas' || fSubcategoria !== 'todas' || fEstado !== 'todos';
+
+  const totalAgotados = useMemo(() => products.filter(isSoldOut).length, [products]);
 
   const handleImageFileChange = async (e) => {
     const file = e.target.files[0];
@@ -1195,12 +1254,127 @@ export default function AdminPanel({
 
           {/* ------------------------------------------------ Tabla productos */}
           <div className="admin-products-table">
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', marginBottom: '1.5rem' }}>
-              Productos Cargados ({products.length})
-            </h3>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '0.6rem',
+                flexWrap: 'wrap',
+                marginBottom: '0.85rem'
+              }}
+            >
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', margin: 0 }}>
+                {hayFiltros
+                  ? `Mostrando ${productosFiltrados.length} de ${products.length}`
+                  : `Productos Cargados (${products.length})`}
+              </h3>
+              {totalAgotados > 0 && (
+                <span style={{ fontSize: '0.78rem', color: 'var(--accent-red)' }}>
+                  {totalAgotados} agotado{totalAgotados === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+
+            {/* ------------------------------------------------- Filtros ---- */}
+            <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1.25rem' }}>
+              <div style={{ position: 'relative' }}>
+                <Search
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-muted)',
+                    pointerEvents: 'none'
+                  }}
+                />
+                <input
+                  type="search"
+                  value={fBusqueda}
+                  onChange={(e) => setFBusqueda(e.target.value)}
+                  placeholder="Buscar por nombre o descripción…"
+                  className="form-input"
+                  aria-label="Buscar productos"
+                  style={{ width: '100%', paddingLeft: '2.25rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                {[
+                  { v: 'todas', l: 'Todas' },
+                  { v: 'mates', l: 'Mates' },
+                  { v: 'bombillas', l: 'Bombillas' },
+                  { v: 'accesorios', l: 'Accesorios' }
+                ].map((c) => (
+                  <button
+                    key={c.v}
+                    onClick={() => cambiarCategoria(c.v)}
+                    aria-pressed={fCategoria === c.v}
+                    className={fCategoria === c.v ? 'btn btn-primary' : 'btn btn-outline'}
+                    style={{ fontSize: '0.75rem', padding: '0.3rem 0.8rem' }}
+                  >
+                    {c.l}
+                  </button>
+                ))}
+              </div>
+
+              {subcategorias.length > 1 && (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setFSubcategoria('todas')}
+                    aria-pressed={fSubcategoria === 'todas'}
+                    className={fSubcategoria === 'todas' ? 'btn btn-primary' : 'btn btn-outline'}
+                    style={{ fontSize: '0.72rem', padding: '0.22rem 0.7rem', borderStyle: 'dashed' }}
+                  >
+                    Todas
+                  </button>
+                  {subcategorias.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setFSubcategoria(s)}
+                      aria-pressed={fSubcategoria === s}
+                      className={fSubcategoria === s ? 'btn btn-primary' : 'btn btn-outline'}
+                      style={{ fontSize: '0.72rem', padding: '0.22rem 0.7rem' }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {[
+                  { v: 'todos', l: 'Todo el stock' },
+                  { v: 'agotados', l: 'Solo agotados' },
+                  { v: 'disponibles', l: 'Solo disponibles' },
+                  { v: 'promo', l: 'En promoción' }
+                ].map((e) => (
+                  <button
+                    key={e.v}
+                    onClick={() => setFEstado(e.v)}
+                    aria-pressed={fEstado === e.v}
+                    className={fEstado === e.v ? 'btn btn-primary' : 'btn btn-outline'}
+                    style={{ fontSize: '0.72rem', padding: '0.22rem 0.7rem' }}
+                  >
+                    {e.l}
+                  </button>
+                ))}
+
+                {hayFiltros && (
+                  <button
+                    onClick={limpiarFiltros}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.72rem', padding: '0.22rem 0.7rem', marginLeft: 'auto' }}
+                  >
+                    <X size={12} /> Limpiar
+                  </button>
+                )}
+              </div>
+            </div>
 
             <div className="products-table-list">
-              {products.map((product) => {
+              {productosFiltrados.map((product) => {
                 const soldOut = isSoldOut(product);
                 const hasQty = product.stock_quantity !== null && product.stock_quantity !== undefined;
                 return (
@@ -1343,6 +1517,19 @@ export default function AdminPanel({
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>
                   No hay productos cargados en la base de datos.
                 </p>
+              )}
+
+              {products.length > 0 && productosFiltrados.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  <p style={{ margin: '0 0 0.75rem' }}>Ningún producto coincide con estos filtros.</p>
+                  <button
+                    onClick={limpiarFiltros}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.9rem' }}
+                  >
+                    <X size={13} /> Limpiar filtros
+                  </button>
+                </div>
               )}
             </div>
           </div>
