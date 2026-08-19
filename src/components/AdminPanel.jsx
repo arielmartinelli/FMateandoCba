@@ -18,7 +18,8 @@ import {
   Minus,
   Loader2,
   UploadCloud,
-  Search
+  Search,
+  Wrench
 } from 'lucide-react';
 import { productService, isSoldOut } from '../productService';
 import { isSupabaseConfigured, supabaseUrl } from '../supabaseClient';
@@ -235,6 +236,33 @@ export default function AdminPanel({
   };
 
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  /* --------------------------------------- Ventana de herramientas -------- */
+
+  const [showTools, setShowTools] = useState(false);
+  const cerrarToolsRef = React.useRef(null);
+
+  useEffect(() => {
+    if (!showTools) return;
+
+    // Al abrir, el foco va al botón de cerrar: quien navega con teclado
+    // no tiene que recorrer toda la página para salir.
+    cerrarToolsRef.current?.focus();
+
+    const alPresionar = (e) => {
+      if (e.key === 'Escape') setShowTools(false);
+    };
+    window.addEventListener('keydown', alPresionar);
+
+    // Bloquea el scroll del fondo mientras la ventana está abierta.
+    const overflowPrevio = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', alPresionar);
+      document.body.style.overflow = overflowPrevio;
+    };
+  }, [showTools]);
 
   /* ------------------------------------------------- Filtros de la tabla --- */
 
@@ -640,6 +668,14 @@ export default function AdminPanel({
             >
               <RefreshCw size={15} /> Recargar
             </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowTools(true)}
+              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+              title="Copias de seguridad, publicación y diagnóstico"
+            >
+              <Wrench size={15} /> Herramientas
+            </button>
             <button className="btn btn-outline" onClick={handleLogout} style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
               Cerrar Sesión
             </button>
@@ -690,7 +726,9 @@ export default function AdminPanel({
             </p>
           )}
 
-          {diag && (
+          {/* Con todo en orden alcanza el título. El detalle sólo aparece si
+              hay algo roto, o a pedido desde Herramientas. */}
+          {diag && failedChecks.length > 0 && (
             <ul style={{ margin: '0.75rem 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: '0.4rem' }}>
               {diag.checks.map((c) => (
                 <li
@@ -776,13 +814,105 @@ export default function AdminPanel({
           </div>
         )}
 
+        {/* ================================================================== */}
+        {/*  Ventana de herramientas                                           */}
+        {/*                                                                    */}
+        {/*  Publicar y copias de seguridad son tareas ocasionales y técnicas: */}
+        {/*  fuera del flujo diario ensucian el panel de quien carga stock.    */}
+        {/* ================================================================== */}
+        {showTools && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tools-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowTools(false);
+            }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.65)',
+              backdropFilter: 'blur(3px)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              padding: '2rem 1rem',
+              overflowY: 'auto'
+            }}
+          >
+            <div
+              className="bg-glass"
+              style={{
+                width: '100%',
+                maxWidth: '640px',
+                borderRadius: '14px',
+                border: '1px solid var(--border-color)',
+                padding: '1.25rem',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  marginBottom: '1rem',
+                  paddingBottom: '0.75rem',
+                  borderBottom: '1px solid var(--border-color)'
+                }}
+              >
+                <Wrench size={18} />
+                <strong id="tools-title" style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem' }}>
+                  Herramientas
+                </strong>
+                <button
+                  ref={cerrarToolsRef}
+                  onClick={() => setShowTools(false)}
+                  className="btn btn-outline"
+                  aria-label="Cerrar herramientas"
+                  style={{ marginLeft: 'auto', padding: '0.3rem 0.6rem' }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* --------------------- Estado de la conexión (detalle) ------ */}
+              {diag && (
+                <details style={{ marginBottom: '1.25rem' }}>
+                  <summary style={{ cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'var(--font-heading)' }}>
+                    Diagnóstico de la conexión
+                  </summary>
+                  <ul style={{ margin: '0.6rem 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: '0.4rem' }}>
+                    {diag.checks.map((c) => (
+                      <li
+                        key={c.name}
+                        style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8rem' }}
+                      >
+                        {c.ok ? (
+                          <CheckCircle2 size={14} style={{ color: '#4ade80', flexShrink: 0, marginTop: '2px' }} />
+                        ) : (
+                          <AlertTriangle size={14} style={{ color: 'var(--accent-red)', flexShrink: 0, marginTop: '2px' }} />
+                        )}
+                        <span>
+                          <strong>{c.name}:</strong>{' '}
+                          <span style={{ color: c.ok ? 'var(--text-secondary)' : 'var(--accent-red)' }}>
+                            {typeof c.detail === 'string' ? c.detail : JSON.stringify(c.detail)}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
         {/* ------------------------- Publicar el catálogo en Vercel --------- */}
         <div
-          className="bg-glass"
           style={{
-            padding: '1rem 1.25rem',
+            padding: '1rem',
             borderRadius: '12px',
             marginBottom: '1.25rem',
+            border: '1px solid var(--border-color)',
             borderLeft: '4px solid #d4af37'
           }}
         >
@@ -823,7 +953,7 @@ export default function AdminPanel({
         </div>
 
         {/* --------------------------------------- Copias de seguridad ------ */}
-        <div className="bg-glass" style={{ padding: '1rem 1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
+        <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
             <HardDriveDownload size={18} />
             <strong style={{ fontFamily: 'var(--font-heading)' }}>Copias de seguridad</strong>
@@ -919,7 +1049,10 @@ export default function AdminPanel({
               </div>
             )}
           </div>
-        </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ----------------------------------------------- Formulario + tabla */}
         <div className="admin-layout">
