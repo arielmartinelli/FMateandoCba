@@ -59,6 +59,52 @@ function compressImage(file, { maxSide = 1000, quality = 0.75 } = {}) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Cloudinary                                                                 */
+/*                                                                             */
+/*  Las fotos se suben a Cloudinary (25 GB/mes gratis) en vez de guardarse      */
+/*  como base64 dentro de la fila. En la base queda sólo la URL: unos 80 bytes  */
+/*  en lugar de 300 KB. Es lo que evita volver a quemar la cuota de Supabase.   */
+/* -------------------------------------------------------------------------- */
+
+const CLOUDINARY_CLOUD = (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '').trim();
+const CLOUDINARY_PRESET = (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '').trim();
+const cloudinaryHabilitado = CLOUDINARY_CLOUD !== '' && CLOUDINARY_PRESET !== '';
+
+/**
+ * Sube el archivo y devuelve la URL ya optimizada.
+ *
+ * `f_auto,q_auto,w_1000` le pide a Cloudinary que sirva WebP o AVIF según el
+ * navegador, con calidad automática y máximo 1000px de ancho. La foto original
+ * queda intacta en Cloudinary; esto sólo afecta cómo se entrega.
+ */
+async function subirACloudinary(file) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', CLOUDINARY_PRESET);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST',
+    body: form
+  });
+
+  const json = await res.json().catch(() => ({}));
+
+  if (!res.ok || !json.secure_url) {
+    const detalle = json?.error?.message || `HTTP ${res.status}`;
+    throw new Error(
+      `Cloudinary rechazó la imagen: ${detalle}. Revisá que el upload preset "${CLOUDINARY_PRESET}" exista y esté en modo Unsigned.`
+    );
+  }
+
+  return {
+    url: json.secure_url.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_1000/'),
+    bytes: json.bytes,
+    width: json.width,
+    height: json.height
+  };
+}
+
 const approxKb = (dataUrl) =>
   typeof dataUrl === 'string' && dataUrl.startsWith('data:')
     ? Math.round((dataUrl.length * 0.75) / 1024)
@@ -187,9 +233,31 @@ export default function AdminPanel({
     sessionStorage.removeItem('fmateando_admin_auth');
   };
 
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
   const handleImageFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Camino bueno: la foto va a Cloudinary y en la base queda sólo la URL.
+    if (cloudinaryHabilitado) {
+      setSubiendoFoto(true);
+      try {
+        const { url, bytes, width, height } = await subirACloudinary(file);
+        setImageUrl(url);
+        setImageFilePreview(url);
+        setImageNote(`Subida a Cloudinary · ${width}×${height}px · ${Math.round(bytes / 1024)} KB`);
+        say('ok', 'Foto subida. En la base se guarda sólo el enlace, no la imagen.');
+      } catch (err) {
+        say('error', err.message || 'No se pudo subir la foto.');
+      } finally {
+        setSubiendoFoto(false);
+        e.target.value = '';
+      }
+      return;
+    }
+
+    // Respaldo: sin Cloudinary configurado, se incrusta comprimida y se avisa.
     try {
       const { dataUrl, width, height } = await compressImage(file);
       setImageFilePreview(dataUrl);
@@ -198,12 +266,10 @@ export default function AdminPanel({
       setImageNote(
         `Optimizada a ${width}×${height}px · ~${kb} KB · se guarda dentro de la base de datos`
       );
-      // Cada foto incrustada se descarga en CADA visita al sitio. Es lo que
-      // consumió los 18,88 GB de egress: hay que avisarlo fuerte.
       if (kb > 150) {
         say(
           'info',
-          `Ojo: esta foto pesa ~${kb} KB y se guarda dentro de la base de datos, así que se descarga en cada visita al sitio. Lo recomendable es poner el archivo en public/fmateando/ del proyecto y pegar acá la ruta (ej: /fmateando/mates/imperial/mi-foto.webp).`
+          `Ojo: esta foto pesa ~${kb} KB y se guarda dentro de la base de datos, así que se descarga en cada visita al sitio. Configurá Cloudinary o pegá una ruta de public/fmateando/.`
         );
       }
     } catch (err) {
@@ -1082,9 +1148,20 @@ export default function AdminPanel({
                     className="form-input"
                     style={{ fontSize: '0.85rem' }}
                     aria-label="Subir foto del producto"
+                    disabled={subiendoFoto}
                   />
-                  {imageNote && (
+                  {subiendoFoto && (
+                    <small style={{ color: 'var(--accent-gold, #d4af37)', fontSize: '0.78rem' }}>
+                      Subiendo la foto…
+                    </small>
+                  )}
+                  {imageNote && !subiendoFoto && (
                     <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{imageNote}</small>
+                  )}
+                  {!cloudinaryHabilitado && (
+                    <small style={{ color: 'var(--accent-red)', fontSize: '0.75rem' }}>
+                      Cloudinary no está configurado: las fotos se guardarán dentro de la base de datos.
+                    </small>
                   )}
                   <input
                     type="text"
