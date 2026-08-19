@@ -16,7 +16,8 @@ import {
   HardDriveDownload,
   Sprout,
   Minus,
-  Loader2
+  Loader2,
+  UploadCloud
 } from 'lucide-react';
 import { productService, isSoldOut } from '../productService';
 import { isSupabaseConfigured, supabaseUrl } from '../supabaseClient';
@@ -93,6 +94,7 @@ export default function AdminPanel({
   onUpdateProduct,
   onDeleteProduct,
   onExportBackup,
+  onExportCatalogoEstatico,
   onRestoreBackupFile,
   onRestoreInitial,
   onSeedCatalog,
@@ -440,6 +442,14 @@ export default function AdminPanel({
     say('ok', `Copia exportada (${res?.count ?? products.length} productos).`);
   };
 
+  const handlePublicarClick = () => {
+    const res = onExportCatalogoEstatico();
+    say(
+      'ok',
+      `catalogo.json generado con ${res?.count ?? products.length} productos. Ahora reemplazá public/catalogo.json en el proyecto y hacé "git add -A", "git commit" y "git push". Cuando Vercel termine el deploy, todos los visitantes ven este stock.`
+    );
+  };
+
   /* ------------------------------------------------------------------ login */
 
   if (!isAuthenticated) {
@@ -478,7 +488,14 @@ export default function AdminPanel({
   /* ------------------------------------------------------------------ panel */
 
   const usingSupabase = dataSource === 'supabase';
+  const usingArchivo = dataSource === 'archivo';
   const failedChecks = diag?.checks?.filter((c) => !c.ok) ?? [];
+
+  const tituloModo = usingSupabase
+    ? 'Guardando en Supabase'
+    : usingArchivo
+      ? 'Mostrando el catálogo publicado en Vercel'
+      : 'Guardando sólo en este navegador';
 
   return (
     <section id="admin" className="admin-section">
@@ -516,9 +533,7 @@ export default function AdminPanel({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
             <Database size={18} />
-            <strong style={{ fontFamily: 'var(--font-heading)' }}>
-              {usingSupabase ? 'Guardando en Supabase' : 'Guardando sólo en este navegador'}
-            </strong>
+            <strong style={{ fontFamily: 'var(--font-heading)' }}>{tituloModo}</strong>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               {isSupabaseConfigured ? supabaseUrl.replace(/^https:\/\//, '') : 'sin conexión configurada'} ·{' '}
               {loading ? 'cargando productos…' : `${products.length} productos cargados`}
@@ -535,8 +550,8 @@ export default function AdminPanel({
 
           {!usingSupabase && (
             <p style={{ margin: '0.6rem 0 0', fontSize: '0.85rem', color: 'var(--accent-red)' }}>
-              Los cambios NO se están guardando en la base de datos: quedan sólo en este navegador y no se ven
-              desde otro dispositivo. Revisá los chequeos de abajo.
+              Los cambios que hagas acá quedan sólo en este navegador. Para que los vean todos, usá
+              <strong> "Descargar catalogo.json"</strong> más abajo y publicalo con git push.
             </p>
           )}
 
@@ -635,6 +650,52 @@ export default function AdminPanel({
             </button>
           </div>
         )}
+
+        {/* ------------------------- Publicar el catálogo en Vercel --------- */}
+        <div
+          className="bg-glass"
+          style={{
+            padding: '1rem 1.25rem',
+            borderRadius: '12px',
+            marginBottom: '1.25rem',
+            borderLeft: '4px solid #d4af37'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <UploadCloud size={18} />
+            <strong style={{ fontFamily: 'var(--font-heading)' }}>Publicar el catálogo en la web</strong>
+          </div>
+
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Editá el stock acá arriba y después publicalo. No necesita base de datos: el archivo lo sirve
+            Vercel, así que funciona aunque Supabase esté caído y no consume nada de su cuota.
+          </p>
+
+          <ol
+            style={{
+              margin: '0.6rem 0 0',
+              paddingLeft: '1.2rem',
+              fontSize: '0.82rem',
+              color: 'var(--text-secondary)',
+              display: 'grid',
+              gap: '0.2rem'
+            }}
+          >
+            <li>Tocá el botón: se descarga <code>catalogo.json</code></li>
+            <li>Reemplazá con él el archivo <code>public/catalogo.json</code> del proyecto</li>
+            <li><code>git add -A</code> → <code>git commit -m "Actualizar stock"</code> → <code>git push</code></li>
+            <li>Cuando Vercel termine el deploy, todos ven el stock nuevo</li>
+          </ol>
+
+          <button
+            className="btn btn-primary"
+            onClick={handlePublicarClick}
+            disabled={products.length === 0}
+            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', marginTop: '0.85rem' }}
+          >
+            <UploadCloud size={15} /> Descargar catalogo.json ({products.length} productos)
+          </button>
+        </div>
 
         {/* --------------------------------------- Copias de seguridad ------ */}
         <div className="bg-glass" style={{ padding: '1rem 1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>

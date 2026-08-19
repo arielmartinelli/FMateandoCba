@@ -146,6 +146,43 @@ Además, Supabase hace backups diarios de todo el proyecto en el plan Pro (en el
 
 ---
 
+## 4a. Cargar el stock HOY, sin Supabase (catálogo publicado en Vercel)
+
+Mientras el proyecto de Supabase está restringido, la fuente de verdad es **`public/catalogo.json`**, servido por Vercel. No consume nada de la cuota de Supabase y funciona aunque la base esté caída.
+
+### Flujo para actualizar el stock
+
+1. Panel de administración → editar el stock (agotados, cantidades, precios).
+2. Botón **"Descargar catalogo.json"**.
+3. Reemplazar `public/catalogo.json` con el archivo descargado.
+4. `git add -A` → `git commit -m "Actualizar stock"` → `git push`.
+5. Cuando Vercel termina el deploy, **todos los visitantes ven el stock nuevo**.
+
+### Cómo decide qué mostrar
+
+El archivo lleva una marca `generado_el`. Cada navegador recuerda la última que aplicó:
+
+- Si el archivo publicado es **más nuevo** → gana el archivo y pisa la copia del navegador. Por eso alcanza con hacer push para que todos vean el cambio, aunque tengan datos viejos guardados.
+- Si no → gana la copia local, así tus ediciones sin publicar no se borran solas.
+
+Cuando Supabase vuelve a estar disponible, **manda Supabase** y el archivo queda sólo como respaldo.
+
+### ⚠ El día que Supabase vuelva (23/08)
+
+La base tiene el stock **viejo**; el bueno está en `catalogo.json`. Apenas se destrabe, hay que pasarlo:
+
+1. Panel → **Importar JSON** → elegir `public/catalogo.json`.
+2. Confirmar. Antes de reemplazar guarda una copia automática del estado anterior.
+3. Verificar con **Probar conexión** que quede todo en verde.
+
+Si te salteás este paso, el sitio vuelve a mostrar el stock desactualizado de la base.
+
+### Verificado
+
+Probado en Chromium: se marcan 2 productos como agotados → se descarga el archivo → se publica → un visitante nuevo **y** uno con datos viejos guardados ven los 2 agotados. Sin errores de runtime.
+
+---
+
 ## 4b. Sacar las fotos de la base de datos
 
 `scripts/extraer-imagenes.mjs` se conecta **directo a PostgreSQL** (no por la API REST, así que funciona incluso con el proyecto restringido), baja cada foto base64, la recomprime a WebP y deja un `.sql` listo para aplicar.

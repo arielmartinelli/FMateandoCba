@@ -162,6 +162,8 @@ export default function App() {
 
   const handleExportBackup = () => productService.exportBackup(products);
 
+  const handleExportCatalogoEstatico = () => productService.exportarCatalogoEstatico(products);
+
   const handleRestoreBackupFile = async (file) => {
     const text = await file.text();
     const parsed = productService.parseBackup(text);
@@ -318,6 +320,7 @@ export default function App() {
           onUpdateProduct={handleUpdateProduct}
           onDeleteProduct={handleDeleteProduct}
           onExportBackup={handleExportBackup}
+          onExportCatalogoEstatico={handleExportCatalogoEstatico}
           onRestoreBackupFile={handleRestoreBackupFile}
           onRestoreInitial={handleRestoreInitial}
           onSeedCatalog={handleSeedCatalog}

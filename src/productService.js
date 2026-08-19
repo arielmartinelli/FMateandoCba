@@ -303,6 +303,55 @@ function leerCache() {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Catálogo estático servido por Vercel                                       */
+/*                                                                             */
+/*  `public/catalogo.json` es la fuente de verdad cuando Supabase no está       */
+/*  disponible (proyecto restringido, sin configurar, caído). Se actualiza      */
+/*  desde el panel: "Descargar catalogo.json" → reemplazar el archivo → push.   */
+/*  Como lo sirve Vercel por CDN, no consume nada de la cuota de Supabase.      */
+/* -------------------------------------------------------------------------- */
+
+const LS_CATALOGO_VERSION = 'fmateando_catalogo_generado_el';
+const RUTA_CATALOGO = '/catalogo.json';
+
+async function cargarCatalogoEstatico() {
+  try {
+    const res = await fetch(RUTA_CATALOGO, { cache: 'no-cache' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const products = normalizeList(Array.isArray(json) ? json : json?.products);
+    if (products.length === 0) return null;
+    return { products, generadoEl: json?.generado_el ?? '' };
+  } catch {
+    return null; // no existe el archivo o no es JSON válido: seguimos sin él
+  }
+}
+
+/**
+ * Decide entre el archivo publicado y la copia del navegador.
+ *
+ * Gana el archivo si trae una fecha `generado_el` más nueva que la última que
+ * este navegador aplicó. Así, cuando hacés push de un catálogo actualizado,
+ * todos los visitantes lo ven aunque tengan datos viejos guardados; y mientras
+ * tanto, tus ediciones locales sin publicar no se pisan solas.
+ */
+async function resolverCatalogoLocal() {
+  const estatico = await cargarCatalogoEstatico();
+  const yaAplicado = readLocal(LS_CATALOGO_VERSION, '');
+
+  if (estatico && (!yaAplicado || estatico.generadoEl > yaAplicado)) {
+    saveLocalProducts(estatico.products);
+    writeLocal(LS_CATALOGO_VERSION, estatico.generadoEl);
+    return { products: estatico.products, desdeArchivo: true };
+  }
+
+  const local = getLocalProducts();
+  if (local.length > 0) return { products: local, desdeArchivo: false };
+  if (estatico) return { products: estatico.products, desdeArchivo: true };
+  return { products: [], desdeArchivo: false };
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Servicio                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -320,10 +369,11 @@ export const productService = {
    */
   async getProducts({ forzarRecarga = false } = {}) {
     if (!isSupabaseConfigured) {
+      const { products, desdeArchivo } = await resolverCatalogoLocal();
       return {
         ...ok(),
-        products: getLocalProducts(),
-        source: 'local',
+        products,
+        source: desdeArchivo ? 'archivo' : 'local',
         needsSeed: false,
         warning: supabaseConfigIssue
       };
@@ -361,10 +411,13 @@ export const productService = {
       };
     } catch (err) {
       console.error('[fmateando] getProducts falló:', err);
+      // Supabase no responde (restringido, caído, sin red): el sitio sigue
+      // funcionando con el catálogo publicado en Vercel.
+      const { products, desdeArchivo } = await resolverCatalogoLocal();
       return {
         ...fail(describeDbError(err)),
-        products: getLocalProducts(),
-        source: 'local',
+        products,
+        source: desdeArchivo ? 'archivo' : 'local',
         needsSeed: false
       };
     }
@@ -586,6 +639,36 @@ export const productService = {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     return ok({ count: payload.count });
+  },
+
+  /**
+   * Genera el `catalogo.json` que se publica en Vercel.
+   *
+   * Es igual que el backup pero con la fecha `generado_el` al frente: esa fecha
+   * es la que hace que el archivo le gane a la copia guardada en el navegador
+   * de cada visitante. Flujo: editás el stock acá → descargás → reemplazás
+   * `public/catalogo.json` → `git push`.
+   */
+  exportarCatalogoEstatico(products) {
+    const lista = normalizeList(products);
+    const payload = {
+      app: 'fmateando-cba',
+      version: 2,
+      generado_el: new Date().toISOString(),
+      nota: 'Catalogo servido por Vercel. Es la fuente de verdad mientras Supabase no este disponible. Para actualizarlo: panel de admin -> Descargar catalogo.json -> reemplazar este archivo -> git push.',
+      count: lista.length,
+      products: lista
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'catalogo.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return ok({ count: lista.length, generado_el: payload.generado_el });
   },
 
   /** Acepta el formato nuevo (`{products:[...]}`) y el viejo (array pelado). */
