@@ -188,6 +188,35 @@ const hasLocalStorage = (() => {
   }
 })();
 
+/**
+ * Limpieza automática de datos viejos del navegador.
+ *
+ * Al cambiar de proyecto de Supabase, los productos guardados en el navegador
+ * quedan con IDs de la base anterior: no coinciden con nada y la pantalla sigue
+ * mostrando el catálogo viejo. Antes había que borrar el localStorage a mano
+ * desde la consola — imposible de pedirle a quien administra el sitio.
+ *
+ * Ahora se guarda la huella del backend en uso. Si cambió, se borra todo lo
+ * de fmateando_* y se arranca limpio, sin que el usuario haga nada.
+ */
+const LS_BACKEND = 'fmateando_backend_id';
+
+(function limpiarSiCambioElBackend() {
+  if (!hasLocalStorage) return;
+  try {
+    const actual = isSupabaseConfigured ? supabaseUrl : 'local';
+    if (window.localStorage.getItem(LS_BACKEND) === actual) return;
+
+    Object.keys(window.localStorage)
+      .filter((k) => k.startsWith('fmateando_') && k !== 'fmateando_cart')
+      .forEach((k) => window.localStorage.removeItem(k));
+
+    window.localStorage.setItem(LS_BACKEND, actual);
+  } catch {
+    /* si falla, seguimos: en el peor caso se ven datos viejos hasta recargar */
+  }
+})();
+
 function readLocal(key, fallback = null) {
   if (!hasLocalStorage) return fallback;
   try {
